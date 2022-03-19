@@ -3,5 +3,5 @@ from main.domain import GoldenCross
 
 def start():
     print("start")
-    GoldenCross.draw_macd_pic()
+    GoldenCross.print_gloden_cross()
     print("end")

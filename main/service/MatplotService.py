@@ -31,9 +31,11 @@ def init_plt_style():
     ax.spines['top'].set_color('none')
 
 
-def show(data, title, xlabel):
-    plt.plot(data)
+def show(data, title, xlabel='x轴', ylabel='y轴', legends=None):
+    lines = plt.plot(data)
     plt.title(title, fontsize=15)
     plt.xlabel(xlabel, fontsize=15)
+    plt.ylabel(ylabel, fontsize=15)
+    plt.legend(handles=lines, labels=legends, loc='best')
     plt.show()
 
