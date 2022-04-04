@@ -32,8 +32,6 @@ class BaoStockRepository(IStockRepository):
             # 获取一条记录，将记录合并在一起
             data_list.append(rs.get_row_data())
         result = pd.DataFrame(data_list, columns=rs.fields)
-        # 日期排序
-        # result.index = pd.to_datetime(result['date'])
 
         return result
 

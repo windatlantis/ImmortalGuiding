@@ -6,37 +6,39 @@
 """
 from main.repository.BaoStockRepository import BaoStockRepository
 from main.service import TaLibService, MatplotService
-from main.utils import SeriesUtil
+from main.utils import CollectionUtil
 import pandas as pd
 import matplotlib.pyplot as plt
 import talib as ta
 
 def get_macd():
     bao = BaoStockRepository()
-    result = bao.get_stock_data_pass_year('sh.601398')
+    # k线数据
+    result = bao.get_stock_data_pass_year('sh.600036')
     result.to_csv('d:/600036.csv')
-    MatplotService.init_plt_style()
-
-    # 小数点后两位
-    SeriesUtil.round2(result['close'])
-    close = result['close']
 
     # 获取3条线的数据
-    macdDIF, macdDEA, macd = TaLibService.get_macd(close)
+    macdDIF, macdDEA, macd = TaLibService.get_macd(result['close'].astype(float).values)
+    # 小数点后两位
+    CollectionUtil.round2(macdDIF)
+    CollectionUtil.round2(macdDEA)
+    CollectionUtil.round2(macd)
     # 前33个为Nan，所以推荐用于计算的数据量一般为你所求日期之间数据量的3倍
-    df_macd = pd.DataFrame([macdDIF[33:], macdDEA[33:], macd[33:]], index=['dif', 'dea', 'macd'])
-    # 转置
-    df_macd = df_macd.T
+    df_macd = pd.DataFrame({"dif":macdDIF[33:], "dea":macdDEA[33:], "macd":macd[33:]}, index=result['date'][33:], columns=['dif', 'dea', 'macd'])
     df_macd.to_csv('d:/600036_macd.csv')
-    return df_macd
+    # 与原数据合并
+    df_macd_data = pd.merge(df_macd, result, on='date', how='left')
+    df_macd_data.to_csv('d:/600036_macd_data.csv', index=False)
+    return df_macd, df_macd_data
 
 
 def draw_macd_pic(df_macd):
+    MatplotService.init_plt_style()
     # 绘制图片
     MatplotService.show(df_macd, title='招商银行近一年macd', xlabel='时间', legends=['dif', 'dea', 'macd'])
 
 def print_gloden_cross():
-    df_macd = get_macd()
+    df_macd, df_macd_data = get_macd()
     draw_macd_pic(df_macd)
 
 
@@ -59,16 +61,19 @@ def computeMACD():
     #记住了dif,dea,hist前33个为Nan，所以推荐用于计算的数据量一般为你所求日期之间数据量的3倍
     #这里计算的hist就是dif-dea,而很多证券商计算的MACD=hist*2=(dif-dea)*2
     dif, dea, hist= ta.MACD(df2['close'].astype(float).values, fastperiod=12, slowperiod=26, signalperiod=9)
+    hist *= 2
     df3 = pd.DataFrame({'dif':dif[33:],'dea':dea[33:],'hist':hist[33:]},
                        index=df2['date'][33:],columns=['dif','dea','hist'])
     df4 = pd.merge(df3, df2, on='date', how='left')
-    #print(df)
-    print(df2)
-    print(df3)
+    # print(df)
+    # print(df2)
+    # print(df3)
     print(df4)
+    df3 = df3[900:]
+    df2.to_csv("D:/out_df2.csv")
+    df3.to_csv("D:/out_df3.csv")
     df4.to_csv("D:/out_df4.csv", index=False)
-    df2.to_csv("D:/out_df2.csv", index=False)
-    hist=2*(df4['dif']-df4['dea'])
+    # hist=2*(df4['dif']-df4['dea'])
     df3.plot(title='MACD')
     plt.show()
     #寻找MACD金叉和死叉
