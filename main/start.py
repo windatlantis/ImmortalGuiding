@@ -3,7 +3,8 @@ from main.domain import GoldenCross
 
 def start():
     print("start")
-    GoldenCross.print_gloden_cross()
+    stock_id='sh.600036'
+    GoldenCross.print_cross_useful(stock_id)
     # GoldenCross.computeMACD()
     print("end")
 
