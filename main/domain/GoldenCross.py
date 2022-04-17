@@ -88,46 +88,44 @@ def print_cross(df_macd_data):
     """
     line_number = int(df_macd_data.shape[0])
     df_macd_data_extend = pd.DataFrame(columns=['date', '30day_min_close', '30day_max_close',
-                          'price_new_low', 'price_new_high',
-                          'price_last_low', 'price_last_high',
-                          '30day_min_dif', '30day_max_dif'])
+                                                '30day_new_low', '30day_new_high',
+                                                'price_last_low', 'price_last_high',
+                                                'dif_last_low', 'dif_last_high'])
+    price_last_low = None
+    price_last_high = None
+    dif_last_low = None
+    dif_last_high = None
     for i in range(line_number):
-        cur = df_macd_data[i]
+        # 当前
+        cur = df_macd_data.iloc[i]
         cur_close = cur['close']
         cur_dif = cur['dif']
-        thirty_day_ago_idx = 0 if i<=29 else i-29
-        thirty_day_min_close = df_macd_data['close'][thirty_day_ago_idx, i + 1].min()
-        thirty_day_max_close = df_macd_data['close'][thirty_day_ago_idx, i + 1].max()
-        thirty_day_min_dif = df_macd_data['dif'][thirty_day_ago_idx, i + 1].min()
-        thirty_day_max_dif = df_macd_data['dif'][thirty_day_ago_idx, i + 1].max()
-
+        # 前高、前低
+        if i > 2:
+            if cur_close < df_macd_data['close'][i - 1] and df_macd_data['close'][i - 1] > df_macd_data['close'][i - 2]:
+                price_last_high = df_macd_data['close'][i - 1]
+            elif cur_close > df_macd_data['close'][i - 1] and df_macd_data['close'][i - 1] < df_macd_data['close'][i - 2]:
+                price_last_low = df_macd_data['close'][i - 1]
+            if cur_dif < df_macd_data['dif'][i - 1] and df_macd_data['dif'][i - 1] > df_macd_data['dif'][i - 2]:
+                dif_last_high = df_macd_data['dif'][i - 1]
+            elif cur_dif > df_macd_data['dif'][i - 1] and df_macd_data['dif'][i - 1] < df_macd_data['dif'][i - 2]:
+                dif_last_low = df_macd_data['dif'][i - 1]
+        # 30天内
+        thirty_day_ago_idx = 0 if i <= 29 else i - 29
+        thirty_day_min_close = df_macd_data['close'][thirty_day_ago_idx:i + 1].min()
+        thirty_day_max_close = df_macd_data['close'][thirty_day_ago_idx:i + 1].max()
+        # add
         df_macd_data_extend.loc[i] = {'date': cur['date'],
                                       '30day_min_close': thirty_day_min_close, '30day_max_close': thirty_day_max_close,
-                                      'price_new_low': 1 if cur_close == thirty_day_min_close else 0,
-                                      'price_new_high': 1 if cur_close == thirty_day_max_close else 0,
-                                      # 'price_last_low':
-                                      # 'price_last_high':
-                                      '30day_min_dif': thirty_day_min_dif, '30day_max_dif': thirty_day_max_dif}
+                                      '30day_new_low': 1 if cur_close == thirty_day_min_close else 0,
+                                      '30day_new_high': 1 if cur_close == thirty_day_max_close else 0,
+                                      'price_last_low': price_last_low, 'price_last_high': price_last_high,
+                                      'dif_last_low': dif_last_low, 'dif_last_high': dif_last_high}
 
-    # 交叉后一天 价格 dif dea 指标类型(金\死)
-    cross_collector = pd.DataFrame(columns=['date', 'close', 'dif', 'dea', 'macd_type'])
-    for i in range(line_number - 1):
-        j = i + 1
-        yesterday = df_macd_data.iloc[i]
-        today = df_macd_data.iloc[j]
-        if yesterday['dif'] < yesterday['dea'] and today['dif'] >= today['dea']:
-            cross_collector.loc[cross_collector.shape[0]] = {'date': today['date'], 'close': today['close'],
-                                                             'dif': today['dif'], 'dea': today['dea'], 'macd_type': '金'}
-        elif yesterday['dif'] > yesterday['dea'] and today['dif'] <= today['dea']:
-            cross_collector.loc[cross_collector.shape[0]] = {'date': today['date'], 'close': today['close'],
-                                                             'dif': today['dif'], 'dea': today['dea'], 'macd_type': '死'}
-
-    print(cross_collector)
-    group_type = cross_collector.groupby('macd_type')
-    jin = group_type.get_group('金')
-    si = group_type.get_group('死')
-    print('底背离:\n', get_beili(jin))
-    print('顶背离:\n', get_beili(si))
+    # merge
+    merge_result = pd.merge(df_macd_data, df_macd_data_extend, on='date', how='left')
+    print(merge_result)
+    print(get_beili(merge_result))
 
 
 def get_beili(data: DataFrame):
@@ -137,13 +135,20 @@ def get_beili(data: DataFrame):
     :return:
     """
     line = int(data.shape[0])
-    beili_collector = pd.DataFrame(columns=['date', 'close', 'dif', 'dea', 'macd_type'])
-    for i in range(line - 1):
-        j = i + 1
-        last = data.iloc[i]
-        this = data.iloc[j]
-        if (last['dif'] - this['dif']) * (last['close'] - this['close']) < 0:
-            beili_collector.loc[beili_collector.shape[0]] = this
+    beili_collector = pd.DataFrame(columns=['date', 'close', 'macd_type'])
+    for i in range(line):
+        cur = data.iloc[i]
+        cur_close = cur['close']
+        macd_type = None
+
+        if cur['price_last_high'] is not None and cur['price_last_low'] is not None and cur['dif_last_high'] is not None and cur['dif_last_low'] is not None:
+            if cur['30day_new_high'] == 1 and cur_close > cur['price_last_high'] and cur['dif'] < cur['dif_last_high']:
+                macd_type = '顶背离'
+            elif cur['30day_new_low'] == 1 and cur_close < cur['price_last_low'] and cur['dif'] > cur['dif_last_low']:
+                macd_type = '底背离'
+
+        if macd_type is not None:
+            beili_collector.loc[i] = {'date': cur['date'], 'close': cur_close, 'macd_type': macd_type}
 
     return beili_collector
 
