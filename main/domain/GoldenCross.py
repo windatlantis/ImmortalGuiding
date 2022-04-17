@@ -6,6 +6,7 @@
 """
 import os
 
+from pandas import DataFrame
 from main.repository.BaoStockRepository import BaoStockRepository
 from main.service import TaLibService, MatplotService
 from main.utils import CollectionUtil
@@ -14,13 +15,14 @@ import matplotlib.pyplot as plt
 import talib as ta
 
 
-def print_cross_useful(stock_id):
+def print_cross_useful(stock_id, read_csv=True):
     """
     打印金叉、死叉
     :param stock_id:
+    :param read_csv:
     :return:
     """
-    df_macd, df_macd_data = get_macd(stock_id)
+    df_macd, df_macd_data = get_macd(stock_id, read_csv)
     # draw_macd_pic(df_macd, stock_id)
     print_cross(df_macd_data)
 
@@ -43,11 +45,11 @@ def get_macd(stock_id, read_csv=True):
         if os.path.exists(macd_data_file_path):
             macd_data_result = pd.read_csv(macd_data_file_path)
 
-        return macd_result,macd_data_result
+        return macd_result, macd_data_result
 
     bao = BaoStockRepository()
     # k线数据
-    result = bao.get_stock_data_pass_year(stock_id)
+    result = bao.get_stock_data_n_year_ago(stock_id, 5)
     result.to_csv('d:/' + stock_id + '.csv')
 
     # 获取3条线的数据
@@ -79,26 +81,71 @@ def draw_macd_pic(df_macd, stock_id):
 
 
 def print_cross(df_macd_data):
+    """
+    打印交叉数据及背离数据
+    :param df_macd_data:
+    :return:
+    """
     line_number = int(df_macd_data.shape[0])
+    df_macd_data_extend = pd.DataFrame(columns=['date', '30day_min_close', '30day_max_close',
+                          'price_new_low', 'price_new_high',
+                          'price_last_low', 'price_last_high',
+                          '30day_min_dif', '30day_max_dif'])
+    for i in range(line_number):
+        cur = df_macd_data[i]
+        cur_close = cur['close']
+        cur_dif = cur['dif']
+        thirty_day_ago_idx = 0 if i<=29 else i-29
+        thirty_day_min_close = df_macd_data['close'][thirty_day_ago_idx, i + 1].min()
+        thirty_day_max_close = df_macd_data['close'][thirty_day_ago_idx, i + 1].max()
+        thirty_day_min_dif = df_macd_data['dif'][thirty_day_ago_idx, i + 1].min()
+        thirty_day_max_dif = df_macd_data['dif'][thirty_day_ago_idx, i + 1].max()
+
+        df_macd_data_extend.loc[i] = {'date': cur['date'],
+                                      '30day_min_close': thirty_day_min_close, '30day_max_close': thirty_day_max_close,
+                                      'price_new_low': 1 if cur_close == thirty_day_min_close else 0,
+                                      'price_new_high': 1 if cur_close == thirty_day_max_close else 0,
+                                      # 'price_last_low':
+                                      # 'price_last_high':
+                                      '30day_min_dif': thirty_day_min_dif, '30day_max_dif': thirty_day_max_dif}
+
     # 交叉后一天 价格 dif dea 指标类型(金\死)
     cross_collector = pd.DataFrame(columns=['date', 'close', 'dif', 'dea', 'macd_type'])
-    for i in range(line_number-1):
+    for i in range(line_number - 1):
         j = i + 1
         yesterday = df_macd_data.iloc[i]
         today = df_macd_data.iloc[j]
-        if yesterday['dif'] < yesterday['dea'] and today['dif'] > today['dea']:
-            cross_collector = cross_collector.append({'date':today['date'], 'close':today['close'], 'dif':today['dif'],
-                                     'dea':today['dea'], 'macd_type':'金'}, ignore_index=True)
-        elif yesterday['dif'] > yesterday['dea'] and today['dif'] < today['dea']:
-            cross_collector = cross_collector.append({'date': today['date'], 'close': today['close'], 'dif': today['dif'],
-                                     'dea': today['dea'], 'macd_type': '死'}, ignore_index=True)
+        if yesterday['dif'] < yesterday['dea'] and today['dif'] >= today['dea']:
+            cross_collector.loc[cross_collector.shape[0]] = {'date': today['date'], 'close': today['close'],
+                                                             'dif': today['dif'], 'dea': today['dea'], 'macd_type': '金'}
+        elif yesterday['dif'] > yesterday['dea'] and today['dif'] <= today['dea']:
+            cross_collector.loc[cross_collector.shape[0]] = {'date': today['date'], 'close': today['close'],
+                                                             'dif': today['dif'], 'dea': today['dea'], 'macd_type': '死'}
 
     print(cross_collector)
     group_type = cross_collector.groupby('macd_type')
     jin = group_type.get_group('金')
     si = group_type.get_group('死')
+    print('底背离:\n', get_beili(jin))
+    print('顶背离:\n', get_beili(si))
 
 
+def get_beili(data: DataFrame):
+    """
+    获取背离
+    :param data:
+    :return:
+    """
+    line = int(data.shape[0])
+    beili_collector = pd.DataFrame(columns=['date', 'close', 'dif', 'dea', 'macd_type'])
+    for i in range(line - 1):
+        j = i + 1
+        last = data.iloc[i]
+        this = data.iloc[j]
+        if (last['dif'] - this['dif']) * (last['close'] - this['close']) < 0:
+            beili_collector.loc[beili_collector.shape[0]] = this
+
+    return beili_collector
 
 
 def greaterThan(a, b):
@@ -110,10 +157,9 @@ def greaterThan(a, b):
         return False
 
 
-def computeMACD():
+def computeMACD(stock_id):
     bao = BaoStockRepository()
-    code = 'sh.600036'
-    df = bao.get_stock_data_n_year_ago(code, 5)
+    df = bao.get_stock_data_n_year_ago(stock_id, 5)
     # 剔除停盘数据
     # print(df)
     df2 = df[df['tradestatus'] == '1']  # 交易日
@@ -150,10 +196,10 @@ def computeMACD():
             lastdif = df4.iloc[i, 1]
             lastclose = df4['close'][i]
             # tlist.append(df3.index[i+1])
-            print("期货代码:{},顶背离时间：{}, 价格：{}".format(code, df4['date'][i + 1], df4['close'][i + 1]))
+            print("期货代码:{},顶背离时间：{}, 价格：{}".format(stock_id, df4['date'][i + 1], df4['close'][i + 1]))
         if ((df4.iloc[i, 1] >= df4.iloc[i, 2]) & (df4.iloc[i + 1, 1] <= df4.iloc[i + 1, 2]) & greaterThan(
                 df4.iloc[i + 1, 1], lastdif) & greaterThan(lastclose, df4['close'][i + 1])):
             lastdif = df4['dif'][i]
             lastclose = df4['close'][i]
             # tlist.append(df4['date'][i+1])
-            print("期货代码:{},底背离时间：{}, 价格：{}".format(code, df4['date'][i + 1], df4['close'][i + 1]))
+            print("期货代码:{},底背离时间：{}, 价格：{}".format(stock_id, df4['date'][i + 1], df4['close'][i + 1]))
