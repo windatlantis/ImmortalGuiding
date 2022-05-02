@@ -14,19 +14,20 @@ import numpy as np
 class MyTestCase(unittest.TestCase):
 
     def test_pandas(self):
-        data = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
-        data.insert(data.shape[1], 'd', 4)
-        data.insert(1, 'e', 5)
-        data['f'] = 0
-        data = pd.concat([data, pd.DataFrame(columns=['g'])], sort=False)
-        print(data)
-        print(data['a'][1:3].max())
+        # data = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
+        # data.insert(data.shape[1], 'd', 4)
+        # data.insert(1, 'e', 5)
+        # data['f'] = 0
+        # data = pd.concat([data, pd.DataFrame(columns=['g'])], sort=False)
+        # print(data)
+        # print(data['a'][1:3].max())
 
-        # df = DataFrame(columns=('lib', 'qty1', 'qty2'))  # 生成空的pandas表
-        # for i in range(6):  # 插入一行
-        #     df.loc[i] = [randint(-1, 1) for n in range(3)]
-        # df.loc[6] = [2, 1, 3]
-        # print(df)
+        df = DataFrame(columns=('lib', 'qty1', 'qty2'))  # 生成空的pandas表
+        for i in range(6):  # 插入一行
+            df.loc[i] = [randint(-1, 1) for n in range(3)]
+        df.loc[6] = [2, 1, 3]
+        df.loc[df.shape[0]] = [3, 3, 3]
+        print(df)
 
     def test_something(self):
         result = pd.read_csv("d:/20211001_20220125.csv")
