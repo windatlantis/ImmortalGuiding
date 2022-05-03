@@ -42,8 +42,9 @@ class BaoStockRepository(IStockRepository):
         # 详细指标参数，参见“历史行情指标参数”章节；“分钟线”参数与“日线”参数不同。“分钟线”不包含指数。
         # 分钟线指标：date,time,code,open,high,low,close,volume,amount,adjustflag
         # 周月线指标：date,code,open,high,low,close,volume,amount,adjustflag,turn,pctChg
+        fields = RepoConstants.fields if frequency in RepoConstants.frequency else RepoConstants.fields_min
         rs = bs.query_history_k_data_plus(stock_id,
-                                          RepoConstants.fields,
+                                          fields,
                                           start_date, end_date,
                                           frequency, adjustflag)
         print('query_history_k_data_plus respond error_code:' + rs.error_code)

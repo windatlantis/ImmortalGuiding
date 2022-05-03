@@ -20,7 +20,7 @@ def print_cross_useful(stock_id, read_csv=True):
     :param read_csv:
     :return:
     """
-    df_macd, df_macd_data = DataCreator.get_macd(stock_id, read_csv)
+    df_macd, df_macd_data = DataCreator.get_one_year_macd(stock_id, read_csv)
     # draw_macd_pic(df_macd, stock_id)
     print_cross(df_macd_data, stock_id)
 
@@ -34,7 +34,7 @@ def draw_macd_pic(df_macd, stock_id):
     """
     MatplotService.init_plt_style()
     # 绘制图片
-    MatplotService.show(df_macd, title=stock_id + '近一年macd', xlabel='时间', legends=['dif', 'dea', 'macd'])
+    MatplotService.show(df_macd, title=stock_id + '近5年macd', xlabel='时间', legends=['dif', 'dea', 'macd'])
 
 
 def add_high_low_point(df_macd_data):
