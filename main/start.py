@@ -1,12 +1,10 @@
-from main.domain import GoldenCross, MacdDeviation
+from main.domain import MacdDeviation
 
 
 def start():
     print("start")
     stock_id='sh.600036'
-    # GoldenCross.print_cross_useful(stock_id)
-    # GoldenCross.computeMACD(stock_id)
-    MacdDeviation.deviation_day_15min(stock_id)
+    MacdDeviation.print_deviation(stock_id)
     print("end")
 
 if __name__ == "__main__":

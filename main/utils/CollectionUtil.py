@@ -4,7 +4,7 @@
 @Author: windatlantis
 @File : CollectionUtil.py
 """
-from pandas import Series
+from pandas import Series, DataFrame
 
 
 def round2(arr):
@@ -34,3 +34,25 @@ def custom_values(arr, func):
             arr[i] = func(arr[i])
 
     return
+
+
+def df_add(table: DataFrame, data):
+    """
+    在最后一行添加数据
+    :param table:
+    :param data:
+    :return:
+    """
+    table.loc[table.shape[0]] = data
+
+
+def df_getlast(table: DataFrame, or_default):
+    """
+    获取最后一行数据
+    :param table:
+    :param or_default:
+    :return:
+    """
+    if table.empty:
+        return or_default
+    return table.iloc[-1]
