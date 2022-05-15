@@ -8,18 +8,36 @@ import pandas as pd
 
 from main.repository import RepoConstants
 from main.repository.BaoStockRepository import BaoStockRepository
+from main.repository.AkShareRepository import AkShareRepository
 from main.service import TaLibService
 from main.utils import CollectionUtil
 from main.utils import FileUtil
 
+repository_factory = {
+    'bao': BaoStockRepository(),
+    'ak': AkShareRepository()
+}
+column_map = {
+    'bao': {'close': 'close', 'date': 'date'},
+    'ak': {'close': '收盘', 'date': '日期'}
+}
 
-def get_n_year_macd(stock_id, year, read_csv=True, frequency='d'):
+
+def get_column_name(name, source='bao'):
+    mapping = column_map.get(source)
+    if mapping is not None:
+        return mapping.get(name)
+    return ''
+
+
+def get_n_year_macd(stock_id, year, read_csv=True, frequency='d', source='bao'):
     """
     获取macd
     :param stock_id:
     :param year:
     :param read_csv:
     :param frequency:
+    :param source:
     :return:
     """
     macd_file = '{}_{}_{}y_macd'.format(stock_id, frequency, year)
@@ -27,14 +45,16 @@ def get_n_year_macd(stock_id, year, read_csv=True, frequency='d'):
     if read_csv and FileUtil.exist_csv(macd_file) and FileUtil.exist_csv(macd_data_file):
         macd_result = FileUtil.read_csv(macd_file)
         macd_data_result = FileUtil.read_csv(macd_data_file)
+        print('read_csv success')
         return macd_result, macd_data_result
 
-    bao = BaoStockRepository()
+    repository = repository_factory.get(source)
     # k线数据
-    result = bao.get_stock_data_n_year_ago(stock_id, year, frequency)
+    result = repository.get_stock_data_n_year_ago(stock_id, year, frequency)
 
     # 获取3条线的数据
-    macdDIF, macdDEA, macd = TaLibService.get_macd(result['close'].astype(float).values)
+    close_column = get_column_name('close', source)
+    macdDIF, macdDEA, macd = TaLibService.get_macd(result[close_column].astype(float).values)
     # 小数点后两位
     CollectionUtil.round2(macdDIF)
     CollectionUtil.round2(macdDEA)
@@ -54,6 +74,7 @@ def get_n_year_macd(stock_id, year, read_csv=True, frequency='d'):
         FileUtil.write_csv(result, '{}_{}_{}y_close'.format(stock_id, frequency, year))
         FileUtil.write_csv(df_macd, macd_file)
         FileUtil.write_csv(df_macd_data, macd_data_file, index=False)
+        print('write_csv success')
     return df_macd, df_macd_data
 
 

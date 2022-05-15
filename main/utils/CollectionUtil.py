@@ -67,8 +67,8 @@ def is_sorted(table, ordered='asc'):
     """
     if ordered == 'asc':
         # 正序
-        return all([table.iloc[i] <= table.iloc[i + 1] for i in range(len(table) - 1)])
+        return all([table.iloc[i + 1] >= table.iloc[i] for i in range(len(table) - 1)])
     elif ordered == 'desc':
         # 倒序
-        return all([table.iloc[i] >= table.iloc[i + 1] for i in range(len(table) - 1)])
+        return all([table.iloc[i + 1] <= table.iloc[i] for i in range(len(table) - 1)])
     return False
