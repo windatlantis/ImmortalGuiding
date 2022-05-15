@@ -56,3 +56,19 @@ def df_getlast(table: DataFrame, or_default):
     if table.empty:
         return or_default
     return table.iloc[-1]
+
+
+def is_sorted(table, ordered='asc'):
+    """
+    检查是否数据顺序
+    :param table:
+    :param ordered:
+    :return:
+    """
+    if ordered == 'asc':
+        # 正序
+        return all([table.iloc[i] <= table.iloc[i + 1] for i in range(len(table) - 1)])
+    elif ordered == 'desc':
+        # 倒序
+        return all([table.iloc[i] >= table.iloc[i + 1] for i in range(len(table) - 1)])
+    return False
