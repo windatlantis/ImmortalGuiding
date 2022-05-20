@@ -15,6 +15,16 @@ import pandas as pd
 
 min5 = 500000
 min15 = min5 * 3
+k_type_date_list = ['m', 'w', 'd']
+k_type_time_list = ['60m', '15m', '5m']
+k_type_time_map = {
+    'm': 'date',
+    'w': 'date',
+    'd': 'date',
+    '60m': 'time',
+    '15m': 'time',
+    '5m': 'time',
+}
 
 
 def day_15min(stock_id, read_csv=True):
@@ -31,10 +41,14 @@ def day_15min(stock_id, read_csv=True):
     min5_macd, min5_macd_data = DataCreator.get_one_year_macd(stock_id, read_csv, frequency='5')
 
     # 收集日线macd金叉至转折前的日期
-    days = __collect_golden_cross_day(day_macd_data)
-    for i in range(day_macd_data.shape[0]):
+    for i in range(2, day_macd_data.shape[0]):
         cur = day_macd_data.iloc[i]
+        last = day_macd_data.iloc[i - 1]
+        last2 = day_macd_data.iloc[i - 2]
+        # 日期
         day = cur['date']
+        # 日线macd金叉的第二天
+        golden_cross_next_day = last['macd'] > 0 and last['macd'] > last2['macd']
         # 15分钟级别macd
         macd_15 = min15_macd_data[min15_macd_data['date'] == day]
         # 15分钟级别金叉死叉
@@ -47,7 +61,7 @@ def day_15min(stock_id, read_csv=True):
         line_cross_5 = LineCrossService.line_cross(macd_5, date_name='time')
         # 5分钟级别背离
         macd_deviation_5 = DeviationService.collect_macd_deviation(line_cross_5, date_name='time')
-        if day in days:
+        if golden_cross_next_day:
             day_15min_buy1(day, line_cross_15, record_list)
             day_15min_buy2(day, line_cross_soon_15, macd_deviation_5, record_list)
         day_15min_sell(day, macd_15, line_cross_soon_15, line_cross_5, macd_deviation_5, record_list)
@@ -169,22 +183,6 @@ def __add_to_record_list(record_list: DataFrame, data):
     #         tip = 'repeat'
     # data.append(tip)
     CollectionUtil.df_add(record_list, data)
-
-
-def __collect_golden_cross_day(day_macd: DataFrame):
-    """
-    收集日线macd金叉日期
-    :param day_macd:
-    :return:
-    """
-    days = []
-    for i in range(1, day_macd.shape[0]):
-        cur = day_macd.iloc[i]
-        last = day_macd.iloc[i - 1]
-        # 日线macd金叉,macd不断变大
-        if cur['macd'] > 0 and cur['macd'] > last['macd']:
-            days.append(cur['date'])
-    return days
 
 
 def __get_hhmmss(time):

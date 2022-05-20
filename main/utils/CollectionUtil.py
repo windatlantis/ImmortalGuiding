@@ -58,7 +58,7 @@ def df_getlast(table: DataFrame, or_default):
     return table.iloc[-1]
 
 
-def is_sorted(table, ordered='asc'):
+def is_sorted(table, ordered='asc') -> bool:
     """
     检查是否数据顺序
     :param table:
