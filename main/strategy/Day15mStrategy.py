@@ -10,7 +10,7 @@ from pandas import DataFrame
 
 from main.domain import DataCreator
 from main.service import LineCrossService, DeviationService
-from main.utils import CollectionUtil, FileUtil
+from main.utils import CollectionUtil, FileUtil, DateUtil
 import pandas as pd
 
 min5 = 500000
@@ -40,31 +40,31 @@ def day_15min(stock_id, read_csv=True):
     min15_macd, min15_macd_data = DataCreator.get_one_year_macd(stock_id, read_csv, frequency='15')
     min5_macd, min5_macd_data = DataCreator.get_one_year_macd(stock_id, read_csv, frequency='5')
 
-    # 收集日线macd金叉至转折前的日期
-    for i in range(2, day_macd_data.shape[0]):
+    for i in range(3, day_macd_data.shape[0]):
         cur = day_macd_data.iloc[i]
         last = day_macd_data.iloc[i - 1]
-        last2 = day_macd_data.iloc[i - 2]
         # 日期
         day = cur['date']
-        # 日线macd金叉的第二天
-        golden_cross_next_day = last['macd'] > 0 and last['macd'] > last2['macd']
+        print('day:' + day)
+        # 日线macd金叉及其延申
+        golden_cross_day = cur['macd'] > 0 and cur['macd'] > last['macd']
         # 15分钟级别macd
         macd_15 = min15_macd_data[min15_macd_data['date'] == day]
         # 15分钟级别金叉死叉
         line_cross_15 = LineCrossService.line_cross(macd_15, date_name='time')
-        # 15分钟级别即将金叉死叉
-        line_cross_soon_15 = LineCrossService.line_cross_soon(macd_15, date_name='time')
+        date_range = DateUtil.get_date_range(day, -3)
         # 5分钟级别macd
-        macd_5 = min5_macd_data[min5_macd_data['date'] == day]
+        macd_5 = pd.DataFrame(columns=min5_macd_data.columns)
+        for j in range(len(date_range)):
+            CollectionUtil.df_add(macd_5, min5_macd_data[min5_macd_data['date'] == date_range[j]])
         # 5分钟级别金叉死叉
         line_cross_5 = LineCrossService.line_cross(macd_5, date_name='time')
         # 5分钟级别背离
         macd_deviation_5 = DeviationService.collect_macd_deviation(line_cross_5, date_name='time')
-        if golden_cross_next_day:
+        if golden_cross_day:
             day_15min_buy1(day, line_cross_15, record_list)
-            day_15min_buy2(day, line_cross_soon_15, macd_deviation_5, record_list)
-        day_15min_sell(day, macd_15, line_cross_soon_15, line_cross_5, macd_deviation_5, record_list)
+            day_15min_buy2(day, line_cross_15, macd_deviation_5, record_list)
+        day_15min_sell(day, macd_15, line_cross_15, line_cross_5, macd_deviation_5, record_list)
     record_list = handle_record(record_list)
     print(record_list)
     FileUtil.write_csv(record_list, 'record_list_{}'.format(stock_id))
@@ -116,18 +116,18 @@ def day_15min_buy1(day, line_cross_15: DataFrame, record_list):
             __add_to_record_list(record_list, [day, cur['time'], cur['close'], "buy1"])
 
 
-def day_15min_buy2(day, line_cross_soon_15: DataFrame, macd_deviation_5: DataFrame, record_list):
+def day_15min_buy2(day, line_cross_15: DataFrame, macd_deviation_5: DataFrame, record_list):
     """
     买入信号2：日线macd金叉且开口向上，15分钟即将金叉，在0轴或0轴以下，5分钟级别底背离
     :param day:
-    :param line_cross_soon_15:
+    :param line_cross_15:
     :param macd_deviation_5:
     :param record_list:
     :return:
     """
-    if line_cross_soon_15.empty or macd_deviation_5.empty:
+    if line_cross_15.empty or macd_deviation_5.empty:
         return
-    golden_cross_15 = line_cross_soon_15[line_cross_soon_15['cross_soon_type'] == 'golden']
+    golden_cross_15 = line_cross_15[line_cross_15['cross_type'] == 'golden_soon']
     bottom_deviation_5 = macd_deviation_5[macd_deviation_5['deviation_type'] == 'bottom']
     if golden_cross_15.empty or bottom_deviation_5.empty:
         return
@@ -137,37 +137,37 @@ def day_15min_buy2(day, line_cross_soon_15: DataFrame, macd_deviation_5: DataFra
         if cur['zero_axis'] <= 0:
             cur_time = cur['time']
             deviation_5 = bottom_deviation_5[
-                (cur_time < bottom_deviation_5['time']) & (bottom_deviation_5['time'] <= cur_time + min15)]
+                (cur_time - min15 < bottom_deviation_5['time']) & (bottom_deviation_5['time'] <= cur_time)]
             if not deviation_5.empty:
                 __add_to_record_list(record_list,
                                      [day, deviation_5.iloc[0]['time'], deviation_5.iloc[0]['close'], "buy2"])
 
 
-def day_15min_sell(day, macd_15: DataFrame, line_cross_soon_15: DataFrame, line_cross_5: DataFrame,
+def day_15min_sell(day, macd_15: DataFrame, line_cross_15: DataFrame, line_cross_5: DataFrame,
                    macd_deviation_5: DataFrame, record_list):
     """
     卖出信号：15分钟级别，在0轴以下，5分钟死叉。在0轴以上，15分钟即将死叉，5分钟顶背离。
     :param day:
     :param macd_15:
-    :param line_cross_soon_15:
+    :param line_cross_15:
     :param line_cross_5:
     :param macd_deviation_5:
     :param record_list:
     :return:
     """
     dead_cross_5 = line_cross_5[(line_cross_5['cross_type'] == 'dead') & (line_cross_5['true_cross'] == True)]
-    dead_cross_soon_15 = line_cross_soon_15[line_cross_soon_15['cross_soon_type'] == 'dead']
+    dead_cross_soon_15 = line_cross_15[line_cross_15['cross_type'] == 'dead_soon']
     top_deviation_5 = macd_deviation_5[macd_deviation_5['deviation_type'] == 'top']
     for i in range(macd_15.shape[0]):
         cur = macd_15.iloc[i]
         cur_time = cur['time']
         if cur['dif'] <= 0:
-            dead_5 = dead_cross_5[(cur_time < dead_cross_5['time']) & (dead_cross_5['time'] <= cur_time + min15)]
+            dead_5 = dead_cross_5[(cur_time - min15 < dead_cross_5['time']) & (dead_cross_5['time'] <= cur_time)]
             if not dead_5.empty:
                 __add_to_record_list(record_list, [day, dead_5.iloc[0]['time'], dead_5.iloc[0]['close'], "sell1"])
         elif cur_time in dead_cross_soon_15['time']:
             top_5 = top_deviation_5[
-                (cur_time < top_deviation_5['time']) & (top_deviation_5['time'] <= cur_time + min15)]
+                (cur_time - min15 < top_deviation_5['time']) & (top_deviation_5['time'] <= cur_time)]
             if not top_5.empty:
                 __add_to_record_list(record_list, [day, top_5.iloc[0]['time'], top_5.iloc[0]['close'], "sell2"])
 

@@ -43,7 +43,11 @@ def df_add(table: DataFrame, data):
     :param data:
     :return:
     """
-    table.loc[table.shape[0]] = data
+    if isinstance(data, DataFrame):
+        for i in range(data.shape[0]):
+            table.loc[table.shape[0]] = data.iloc[i]
+    else:
+        table.loc[table.shape[0]] = data
 
 
 def df_getlast(table: DataFrame, or_default):

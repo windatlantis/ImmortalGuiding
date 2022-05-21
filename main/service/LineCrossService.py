@@ -25,24 +25,33 @@ def line_cross(macd_price_data: DataFrame, line_name='macd', price_name='close',
         cur = macd_price_data.iloc[i]
         last = macd_price_data.iloc[i - 1]
         cross_type = None
-        true_cross = True
+        true_cross = False
         if cur[line_name] >= 0 > last[line_name]:
             # 金叉
             cross_type = 'golden'
+            true_cross = True
         elif cur[line_name] <= 0 < last[line_name]:
             # 死叉
             cross_type = 'dead'
-        elif i >= 4:
-            if CollectionUtil.is_sorted(macd_price_data.loc[i - 4:i - 2, line_name],
-                                        'desc') and CollectionUtil.is_sorted(macd_price_data.loc[i - 2:i, price_name]):
-                # "伪金叉": 如果有三根k线macd连续下降，如果第4根k线高于第3根，第5根高于第四根了，就认为是上涨了
-                cross_type = 'golden'
-                true_cross = False
-            elif CollectionUtil.is_sorted(macd_price_data.loc[i - 4:i - 2, line_name]) and CollectionUtil.is_sorted(
-                    macd_price_data.loc[i - 2:i, price_name], 'desc'):
-                # "伪死叉": 如果有三根k线macd连续上升，如果第4根k线低于第3根，第5根低于第四根了，就认为是伪死叉
-                cross_type = 'dead'
-                true_cross = False
+            true_cross = True
+        else:
+            if i >= 2:
+                if -0.05 < cur[line_name] < 0 and CollectionUtil.is_sorted(macd_price_data.loc[i - 2:i, line_name]):
+                    # 即将金叉:MACD连续三根上涨，并且上涨至-0.05以内
+                    cross_type = 'golden_soon'
+                elif cur[line_name] > 0 and CollectionUtil.is_sorted(macd_price_data.loc[i - 2:i, line_name], 'desc'):
+                    # 即将死叉:MACD连续三根下跌(MACD值是正的)
+                    cross_type = 'dead_soon'
+            if i >= 4:
+                if CollectionUtil.is_sorted(macd_price_data.loc[i - 4:i - 2, line_name],
+                                            'desc') and CollectionUtil.is_sorted(
+                    macd_price_data.loc[i - 2:i, price_name]):
+                    # "伪金叉": 如果有三根k线macd连续下降，如果第4根k线高于第3根，第5根高于第四根了，就认为是上涨了
+                    cross_type = 'golden'
+                elif CollectionUtil.is_sorted(macd_price_data.loc[i - 4:i - 2, line_name]) and CollectionUtil.is_sorted(
+                        macd_price_data.loc[i - 2:i, price_name], 'desc'):
+                    # "伪死叉": 如果有三根k线macd连续上升，如果第4根k线低于第3根，第5根低于第四根了，就认为是伪死叉
+                    cross_type = 'dead'
 
         if cross_type is not None:
             CollectionUtil.df_add(df_extend,

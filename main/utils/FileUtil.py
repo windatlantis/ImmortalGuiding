@@ -12,7 +12,8 @@ import pandas as pd
 
 from main.utils import DateUtil
 
-csv_path = 'd:/{}.csv'
+csv_path = 'd:/db_temp/'
+csv_name = '{}.csv'
 
 
 def write_csv(data: DataFrame, name='', index=True):
@@ -25,7 +26,9 @@ def write_csv(data: DataFrame, name='', index=True):
     """
     if name == '':
         name = DateUtil.format_yymmdd_hhmmss_long(datetime.datetime.now())
-    data.to_csv(csv_path.format(name), index=index)
+    if not os.path.exists(csv_path):
+        os.mkdir(csv_path)
+    data.to_csv(csv_path + csv_name.format(name), index=index)
 
 
 def read_csv(name):
@@ -34,7 +37,7 @@ def read_csv(name):
     :param name:
     :return:
     """
-    path = csv_path.format(name)
+    path = csv_path + csv_name.format(name)
     data = None
     if os.path.exists(path):
         data = pd.read_csv(path)
@@ -47,5 +50,5 @@ def exist_csv(name):
     :param name:
     :return:
     """
-    path = csv_path.format(name)
+    path = csv_path + csv_name.format(name)
     return os.path.exists(path)

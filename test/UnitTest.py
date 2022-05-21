@@ -9,9 +9,22 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import talib as ta
 import numpy as np
-
+from main.utils.DateUtil import *
 
 class MyTestCase(unittest.TestCase):
+
+    def test_date(self):
+        day_str='2022-05-01'
+        addition=-2
+        days = []
+        day = str2day(day_str)
+        if addition > 0:
+            for i in range(addition):
+                days.append(day2str(day + dt.timedelta(days=i + 1)))
+        else:
+            for i in range(addition, 0):
+                days.append(day2str(day + dt.timedelta(days=i)))
+        print(days)
 
     def test_pandas(self):
         # data = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
