@@ -166,7 +166,7 @@ def day_15min_sell(day, macd_15: DataFrame, line_cross_soon_15: DataFrame, line_
     for i in range(macd_15.shape[0]):
         cur = macd_15.iloc[i]
         cur_time = cur['time']
-        if cur['macd'] < 0:
+        if cur['dif'] <= 0:
             dead_5 = dead_cross_5[(cur_time - min15 < dead_cross_5['time']) & (dead_cross_5['time'] <= cur_time)]
             if not dead_5.empty:
                 __add_to_record_list(record_list, [day, dead_5.iloc[0]['time'], dead_5.iloc[0]['close'], "sell1"])
