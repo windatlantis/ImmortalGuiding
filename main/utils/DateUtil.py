@@ -26,15 +26,21 @@ def str2day(day_str, format_str='%Y-%m-%d'):
     return datetime.strptime(day_str, format_str)
 
 
-def get_date_range(day_str, addition):
+def get_date_range(day_str, n):
+    """
+    获取连续n+1天（算上day_str）
+    :param day_str:
+    :param n:为正时间向前，为负时间向后
+    :return:
+    """
     days = []
     day = str2day(day_str)
-    if addition > 0:
+    if n > 0:
         days.append(day_str)
-        for i in range(addition):
+        for i in range(n):
             days.append(day2str(day + dt.timedelta(days=i + 1)))
     else:
-        for i in range(addition, 0):
+        for i in range(n, 0):
             days.append(day2str(day + dt.timedelta(days=i)))
         days.append(day_str)
     return days

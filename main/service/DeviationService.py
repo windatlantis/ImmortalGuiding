@@ -49,12 +49,21 @@ def collect_macd_deviation(cross_extend: DataFrame, price_name='close', date_nam
     :param date_name: 
     :return: 
     """
-    deviation_collector = pd.DataFrame(columns=[date_name, price_name, 'zero_axis', 'deviation_type', 'compare_date'])
+    date_arr = ['date'] if date_name == 'date' else ['date', date_name]
+    date_size = len(date_arr)
+    deviation_collector = pd.DataFrame(columns=date_arr + [price_name, 'zero_axis', 'deviation_type', 'compare_date'])
     for i in range(1, int(cross_extend.shape[0])):
         cur = cross_extend.iloc[i]
         last = cross_extend.iloc[i - 1]
+        deviation_type = None
         if cur['macd'] > last['macd']:
-            CollectionUtil.df_add(deviation_collector, [cur[date_name], cur[price_name], cur['zero_axis'], 'bottom', last[date_name]])
+            deviation_type = 'bottom'
         elif cur['macd'] < last['macd']:
-            CollectionUtil.df_add(deviation_collector, [cur[date_name], cur[price_name], cur['zero_axis'], 'top', last[date_name]])
+            deviation_type = 'top'
+
+        if deviation_type is not None:
+            data = [cur[date_name], cur[price_name], cur['zero_axis'], deviation_type, last[date_name]]
+            if date_size == 2:
+                data.insert(0, cur['date'])
+            CollectionUtil.df_add(deviation_collector, data)
     return deviation_collector

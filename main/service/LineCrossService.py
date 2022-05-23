@@ -19,7 +19,9 @@ def line_cross(macd_price_data: DataFrame, line_name='macd', price_name='close',
     :param date_name:
     :return:
     """
-    df_extend = pd.DataFrame(columns=[date_name, line_name, price_name, 'zero_axis', 'cross_type', 'true_cross'])
+    date_arr = ['date'] if date_name == 'date' else ['date', date_name]
+    date_size = len(date_arr)
+    df_extend = pd.DataFrame(columns=date_arr + [line_name, price_name, 'zero_axis', 'cross_type', 'true_cross'])
     line_number = int(macd_price_data.shape[0])
     for i in range(1, line_number):
         cur = macd_price_data.iloc[i]
@@ -54,33 +56,35 @@ def line_cross(macd_price_data: DataFrame, line_name='macd', price_name='close',
                     cross_type = 'dead'
 
         if cross_type is not None:
-            CollectionUtil.df_add(df_extend,
-                                  [cur[date_name], cur[line_name], cur[price_name], cur['dif'], cross_type, true_cross])
+            data = [cur[date_name], cur[line_name], cur[price_name], cur['dif'], cross_type, true_cross]
+            if date_size == 2:
+                data.insert(0, cur['date'])
+            CollectionUtil.df_add(df_extend, data)
     return df_extend
 
 
-def line_cross_soon(macd_price_data: DataFrame, line_name='macd', price_name='close', date_name='date'):
-    """
-    即将金叉死叉
-    :param macd_price_data:
-    :param line_name:
-    :param price_name:
-    :param date_name:
-    :return:
-    """
-    df_extend = pd.DataFrame(columns=[date_name, line_name, price_name, 'zero_axis', 'cross_soon_type'])
-    line_number = int(macd_price_data.shape[0])
-    for i in range(2, line_number):
-        cur = macd_price_data.iloc[i]
-        cross_soon_type = None
-        if -0.05 < cur[line_name] < 0 and CollectionUtil.is_sorted(macd_price_data.loc[i - 2:i, line_name]):
-            # 即将金叉:MACD连续三根上涨，并且上涨至-0.05以内
-            cross_soon_type = 'golden'
-        elif 0 < cur[line_name] < 0.05 and CollectionUtil.is_sorted(macd_price_data.loc[i - 2:i, line_name], 'desc'):
-            # 即将死叉:MACD连续三根下跌，并且下跌至0.05以内
-            cross_soon_type = 'dead'
-
-        if cross_soon_type is not None:
-            CollectionUtil.df_add(df_extend,
-                                  [cur[date_name], cur[line_name], cur[price_name], cur['dif'], cross_soon_type])
-    return df_extend
+# def line_cross_soon(macd_price_data: DataFrame, line_name='macd', price_name='close', date_name='date'):
+#     """
+#     即将金叉死叉
+#     :param macd_price_data:
+#     :param line_name:
+#     :param price_name:
+#     :param date_name:
+#     :return:
+#     """
+#     df_extend = pd.DataFrame(columns=[date_name, line_name, price_name, 'zero_axis', 'cross_soon_type'])
+#     line_number = int(macd_price_data.shape[0])
+#     for i in range(2, line_number):
+#         cur = macd_price_data.iloc[i]
+#         cross_soon_type = None
+#         if -0.05 < cur[line_name] < 0 and CollectionUtil.is_sorted(macd_price_data.loc[i - 2:i, line_name]):
+#             # 即将金叉:MACD连续三根上涨，并且上涨至-0.05以内
+#             cross_soon_type = 'golden'
+#         elif 0 < cur[line_name] < 0.05 and CollectionUtil.is_sorted(macd_price_data.loc[i - 2:i, line_name], 'desc'):
+#             # 即将死叉:MACD连续三根下跌，并且下跌至0.05以内
+#             cross_soon_type = 'dead'
+#
+#         if cross_soon_type is not None:
+#             CollectionUtil.df_add(df_extend,
+#                                   [cur[date_name], cur[line_name], cur[price_name], cur['dif'], cross_soon_type])
+#     return df_extend

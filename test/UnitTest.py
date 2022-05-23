@@ -13,6 +13,11 @@ from main.utils.DateUtil import *
 
 class MyTestCase(unittest.TestCase):
 
+    def test_arr(self):
+        date_arr = ['date', 'aaa']
+        columns = date_arr + ['zero_axis', 'cross_type', 'true_cross']
+        print(columns)
+
     def test_date(self):
         day_str='2022-05-01'
         addition=-2

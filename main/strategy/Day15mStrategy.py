@@ -36,9 +36,9 @@ def day_15min(stock_id, read_csv=True):
     """
     # 买卖记录
     record_list = pd.DataFrame(columns=['date', 'time', 'price', 'operation'])
-    day_macd, day_macd_data = DataCreator.get_one_year_macd(stock_id, read_csv)
-    min15_macd, min15_macd_data = DataCreator.get_one_year_macd(stock_id, read_csv, frequency='15')
-    min5_macd, min5_macd_data = DataCreator.get_one_year_macd(stock_id, read_csv, frequency='5')
+    day_macd, day_macd_data = DataCreator.get_half_year_macd(stock_id, read_csv)
+    min15_macd, min15_macd_data = DataCreator.get_half_year_macd(stock_id, read_csv, frequency='15')
+    min5_macd, min5_macd_data = DataCreator.get_half_year_macd(stock_id, read_csv, frequency='5')
 
     for i in range(3, day_macd_data.shape[0]):
         cur = day_macd_data.iloc[i]
@@ -46,17 +46,19 @@ def day_15min(stock_id, read_csv=True):
         # 日期
         day = cur['date']
         print('day:' + day)
-        # 日线macd金叉及其延申
-        golden_cross_day = cur['macd'] > 0 and cur['macd'] > last['macd']
-        # 15分钟级别macd
-        macd_15 = min15_macd_data[min15_macd_data['date'] == day]
-        # 15分钟级别金叉死叉
-        line_cross_15 = LineCrossService.line_cross(macd_15, date_name='time')
+        # 今天及前3天
         date_range = DateUtil.get_date_range(day, -3)
+        # 日线macd金叉及其延申
+        golden_cross_day = cur['macd'] > 0 and cur['macd'] >= last['macd']
         # 5分钟级别macd
         macd_5 = pd.DataFrame(columns=min5_macd_data.columns)
+        # 15分钟级别macd
+        macd_15 = pd.DataFrame(columns=min15_macd_data.columns)
         for j in range(len(date_range)):
             CollectionUtil.df_add(macd_5, min5_macd_data[min5_macd_data['date'] == date_range[j]])
+            CollectionUtil.df_add(macd_15, min15_macd_data[min15_macd_data['date'] == date_range[j]])
+        # 15分钟级别金叉死叉
+        line_cross_15 = LineCrossService.line_cross(macd_15, date_name='time')
         # 5分钟级别金叉死叉
         line_cross_5 = LineCrossService.line_cross(macd_5, date_name='time')
         # 5分钟级别背离
@@ -112,7 +114,7 @@ def day_15min_buy1(day, line_cross_15: DataFrame, record_list):
     for i in range(golden_cross.shape[0]):
         cur = golden_cross.iloc[i]
         # 在0轴或0轴以下
-        if cur['zero_axis'] <= 0:
+        if cur['zero_axis'] <= 0 and cur['time'] == day:
             __add_to_record_list(record_list, [day, cur['time'], cur['close'], "buy1"])
 
 
@@ -134,7 +136,7 @@ def day_15min_buy2(day, line_cross_15: DataFrame, macd_deviation_5: DataFrame, r
     for i in range(golden_cross_15.shape[0]):
         cur = golden_cross_15.iloc[i]
         # 在0轴或0轴以下
-        if cur['zero_axis'] <= 0:
+        if cur['zero_axis'] <= 0 and cur['date'] == day:
             cur_time = cur['time']
             deviation_5 = bottom_deviation_5[
                 (cur_time - min15 < bottom_deviation_5['time']) & (bottom_deviation_5['time'] <= cur_time)]
@@ -160,8 +162,10 @@ def day_15min_sell(day, macd_15: DataFrame, line_cross_15: DataFrame, line_cross
     top_deviation_5 = macd_deviation_5[macd_deviation_5['deviation_type'] == 'top']
     for i in range(macd_15.shape[0]):
         cur = macd_15.iloc[i]
+        if not cur['date'] == day:
+            continue
         cur_time = cur['time']
-        if cur['dif'] <= 0:
+        if cur['macd'] < 0:
             dead_5 = dead_cross_5[(cur_time - min15 < dead_cross_5['time']) & (dead_cross_5['time'] <= cur_time)]
             if not dead_5.empty:
                 __add_to_record_list(record_list, [day, dead_5.iloc[0]['time'], dead_5.iloc[0]['close'], "sell1"])

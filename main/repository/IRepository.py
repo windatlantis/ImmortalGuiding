@@ -23,7 +23,7 @@ class IStockRepository(metaclass=ABCMeta):
 
     def get_stock_data_n_year_ago(self, stock_id, n, frequency='d'):
         """
-        获取最近一年K线数据
+        获取最近n年K线数据
         :param stock_id:
         :param n:
         :param frequency:
@@ -31,7 +31,8 @@ class IStockRepository(metaclass=ABCMeta):
         """
         now = datetime.datetime.now()
         year_ago = now + datetime.timedelta(days=n * -365)
-        return self.get_stock_data_by_date(stock_id, DateUtil.format_yymmdd(year_ago), DateUtil.format_yymmdd(now), frequency)
+        return self.get_stock_data_by_date(stock_id, DateUtil.format_yymmdd(year_ago), DateUtil.format_yymmdd(now),
+                                           frequency)
 
     def get_stock_data_pass_year(self, stock_id, frequency='d'):
         """
@@ -41,3 +42,16 @@ class IStockRepository(metaclass=ABCMeta):
         :return:
         """
         return self.get_stock_data_n_year_ago(stock_id, 1, frequency)
+
+    def get_stock_data_n_month_age(self, stock_id, n, frequency='d'):
+        """
+        获取最近n月K线数据
+        :param stock_id:
+        :param n:
+        :param frequency:
+        :return:
+        """
+        now = datetime.datetime.now()
+        year_ago = now + datetime.timedelta(days=n * -30)
+        return self.get_stock_data_by_date(stock_id, DateUtil.format_yymmdd(year_ago), DateUtil.format_yymmdd(now),
+                                           frequency)
