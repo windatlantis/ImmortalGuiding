@@ -57,16 +57,19 @@ def day_15min(stock_id, read_csv=True):
         for j in range(len(date_range)):
             CollectionUtil.df_add(macd_5, min5_macd_data[min5_macd_data['date'] == date_range[j]])
             CollectionUtil.df_add(macd_15, min15_macd_data[min15_macd_data['date'] == date_range[j]])
+        # 当天15分钟级别macd
+        macd_15_day = min15_macd_data[min15_macd_data['date'] == day]
         # 15分钟级别金叉死叉
         line_cross_15 = LineCrossService.line_cross(macd_15, date_name='time')
+        line_cross_soon_15 = LineCrossService.line_cross_soon(macd_15, date_name='time')
         # 5分钟级别金叉死叉
         line_cross_5 = LineCrossService.line_cross(macd_5, date_name='time')
         # 5分钟级别背离
         macd_deviation_5 = DeviationService.collect_macd_deviation(line_cross_5, date_name='time')
         if golden_cross_day:
             day_15min_buy1(day, line_cross_15, record_list)
-            day_15min_buy2(day, line_cross_15, macd_deviation_5, record_list)
-        day_15min_sell(day, macd_15, line_cross_15, line_cross_5, macd_deviation_5, record_list)
+            day_15min_buy2(day, line_cross_soon_15, macd_deviation_5, record_list)
+        day_15min_sell(day, macd_15_day, line_cross_soon_15, line_cross_5, macd_deviation_5, record_list)
     record_list = handle_record(record_list)
     print(record_list)
     FileUtil.write_csv(record_list, 'record_list_{}'.format(stock_id))
@@ -114,22 +117,22 @@ def day_15min_buy1(day, line_cross_15: DataFrame, record_list):
     for i in range(golden_cross.shape[0]):
         cur = golden_cross.iloc[i]
         # 在0轴或0轴以下
-        if cur['zero_axis'] <= 0 and cur['time'] == day:
+        if cur['zero_axis'] <= 0 and cur['date'] == day:
             __add_to_record_list(record_list, [day, cur['time'], cur['close'], "buy1"])
 
 
-def day_15min_buy2(day, line_cross_15: DataFrame, macd_deviation_5: DataFrame, record_list):
+def day_15min_buy2(day, line_cross_soon_15: DataFrame, macd_deviation_5: DataFrame, record_list):
     """
     买入信号2：日线macd金叉且开口向上，15分钟即将金叉，在0轴或0轴以下，5分钟级别底背离
     :param day:
-    :param line_cross_15:
+    :param line_cross_soon_15:
     :param macd_deviation_5:
     :param record_list:
     :return:
     """
-    if line_cross_15.empty or macd_deviation_5.empty:
+    if line_cross_soon_15.empty or macd_deviation_5.empty:
         return
-    golden_cross_15 = line_cross_15[line_cross_15['cross_type'] == 'golden_soon']
+    golden_cross_15 = line_cross_soon_15[line_cross_soon_15['cross_soon_type'] == 'golden_soon']
     bottom_deviation_5 = macd_deviation_5[macd_deviation_5['deviation_type'] == 'bottom']
     if golden_cross_15.empty or bottom_deviation_5.empty:
         return
@@ -145,25 +148,23 @@ def day_15min_buy2(day, line_cross_15: DataFrame, macd_deviation_5: DataFrame, r
                                      [day, deviation_5.iloc[0]['time'], deviation_5.iloc[0]['close'], "buy2"])
 
 
-def day_15min_sell(day, macd_15: DataFrame, line_cross_15: DataFrame, line_cross_5: DataFrame,
+def day_15min_sell(day, macd_15: DataFrame, line_cross_soon_15: DataFrame, line_cross_5: DataFrame,
                    macd_deviation_5: DataFrame, record_list):
     """
     卖出信号：15分钟级别，在0轴以下，5分钟死叉。在0轴以上，15分钟即将死叉，5分钟顶背离。
     :param day:
     :param macd_15:
-    :param line_cross_15:
+    :param line_cross_soon_15:
     :param line_cross_5:
     :param macd_deviation_5:
     :param record_list:
     :return:
     """
     dead_cross_5 = line_cross_5[(line_cross_5['cross_type'] == 'dead') & (line_cross_5['true_cross'] == True)]
-    dead_cross_soon_15 = line_cross_15[line_cross_15['cross_type'] == 'dead_soon']
+    dead_cross_soon_15 = line_cross_soon_15[line_cross_soon_15['cross_soon_type'] == 'dead_soon']
     top_deviation_5 = macd_deviation_5[macd_deviation_5['deviation_type'] == 'top']
     for i in range(macd_15.shape[0]):
         cur = macd_15.iloc[i]
-        if not cur['date'] == day:
-            continue
         cur_time = cur['time']
         if cur['macd'] < 0:
             dead_5 = dead_cross_5[(cur_time - min15 < dead_cross_5['time']) & (dead_cross_5['time'] <= cur_time)]
