@@ -37,13 +37,12 @@ def line_cross(macd_price_data: DataFrame, line_name='macd', price_name='close',
             cross_type = 'dead'
             true_cross = True
         if cross_type is None and i >= 4:
-            if CollectionUtil.is_sorted(macd_price_data.loc[i - 4:i - 2, line_name],
-                                        'desc') and CollectionUtil.is_sorted(
-                macd_price_data.loc[i - 2:i, price_name]):
+            if CollectionUtil.is_sorted(macd_price_data.loc[i - 4:i - 1, line_name], 'desc') \
+                    and CollectionUtil.is_sorted(macd_price_data.loc[i - 2:i + 1, price_name]):
                 # "伪金叉": 如果有三根k线macd连续下降，如果第4根k线高于第3根，第5根高于第四根了，就认为是上涨了
                 cross_type = 'golden'
-            elif CollectionUtil.is_sorted(macd_price_data.loc[i - 4:i - 2, line_name]) and CollectionUtil.is_sorted(
-                    macd_price_data.loc[i - 2:i, price_name], 'desc'):
+            elif CollectionUtil.is_sorted(macd_price_data.loc[i - 4:i - 1, line_name]) \
+                    and CollectionUtil.is_sorted(macd_price_data.loc[i - 2:i + 1, price_name], 'desc'):
                 # "伪死叉": 如果有三根k线macd连续上升，如果第4根k线低于第3根，第5根低于第四根了，就认为是伪死叉
                 cross_type = 'dead'
         if cross_type is not None:
@@ -70,10 +69,10 @@ def line_cross_soon(macd_price_data: DataFrame, line_name='macd', price_name='cl
     for i in range(2, line_number):
         cur = macd_price_data.iloc[i]
         cross_type = None
-        if -0.05 < cur[line_name] < 0 and CollectionUtil.is_sorted(macd_price_data.loc[i - 2:i, line_name]):
+        if -0.05 < cur[line_name] < 0 and CollectionUtil.is_sorted(macd_price_data.loc[i - 2:i + 1, line_name]):
             # 即将金叉:MACD连续三根上涨，并且上涨至-0.05以内
             cross_type = 'golden_soon'
-        elif cur[line_name] > 0 and CollectionUtil.is_sorted(macd_price_data.loc[i - 2:i, line_name], 'desc'):
+        elif cur[line_name] > 0 and CollectionUtil.is_sorted(macd_price_data.loc[i - 2:i + 1, line_name], 'desc'):
             # 即将死叉:MACD连续三根下跌(MACD值是正的)
             cross_type = 'dead_soon'
         if cross_type is not None:

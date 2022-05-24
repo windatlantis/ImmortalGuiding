@@ -68,6 +68,8 @@ def get_n_year_macd(stock_id, year, read_csv=True, frequency='d', source='bao'):
                            columns=['dif', 'dea', 'macd'])
     # 与原数据合并
     df_macd_data = pd.merge(df_macd, result, on=date_name, how='left')
+    if frequency in RepoConstants.frequency_min:
+        df_macd_data['time'] = df_macd_data['time'].astype(float)
 
     # 写文件
     if read_csv:
@@ -127,6 +129,8 @@ def get_n_month_macd(stock_id, month, read_csv=True, frequency='d', source='bao'
                            columns=['dif', 'dea', 'macd'])
     # 与原数据合并
     df_macd_data = pd.merge(df_macd, result, on=date_name, how='left')
+    if frequency in RepoConstants.frequency_min:
+        df_macd_data['time'] = df_macd_data['time'].astype(float)
 
     # 写文件
     if read_csv:

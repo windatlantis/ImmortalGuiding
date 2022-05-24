@@ -40,7 +40,13 @@ def day_15min(stock_id, read_csv=True):
     min15_macd, min15_macd_data = DataCreator.get_half_year_macd(stock_id, read_csv, frequency='15')
     min5_macd, min5_macd_data = DataCreator.get_half_year_macd(stock_id, read_csv, frequency='5')
 
-    for i in range(3, day_macd_data.shape[0]):
+    # 5分钟级别金叉死叉
+    line_cross_5 = LineCrossService.line_cross(min5_macd_data, date_name='time')
+    # 5分钟级别背离
+    macd_deviation_5 = DeviationService.collect_macd_deviation(line_cross_5, date_name='time')
+    FileUtil.write_csv(macd_deviation_5, 'macd_deviation_5_{}'.format(stock_id))
+
+    for i in range(20, day_macd_data.shape[0]):
         cur = day_macd_data.iloc[i]
         last = day_macd_data.iloc[i - 1]
         # 日期
@@ -72,10 +78,44 @@ def day_15min(stock_id, read_csv=True):
         day_15min_sell(day, macd_15_day, line_cross_soon_15, line_cross_5, macd_deviation_5, record_list)
     record_list = handle_record(record_list)
     print(record_list)
+    analysis_record(record_list)
     FileUtil.write_csv(record_list, 'record_list_{}'.format(stock_id))
 
 
+def analysis_record(record_list):
+    """
+    获利分析
+    :param record_list:
+    :return:
+    """
+    count = 0
+    stock = 0
+    earns = []
+    percents = []
+    for i in range(record_list.shape[0]):
+        cur = record_list.iloc[i]
+        earn = 0
+        percent = ''
+        if cur['stocks'] > 0:
+            count = count + float(cur['price']) * 100
+            stock = cur['stocks']
+        if cur['stocks'] == 0 and not stock == 0:
+            earn = float(cur['price']) * stock * 100 - count
+            percent = '{0}%'.format(round(earn / count * 100, 2))
+            count = 0
+            stock = 0
+        earns.append(earn)
+        percents.append(percent)
+    record_list.insert(record_list.shape[1], 'earns', earns)
+    record_list.insert(record_list.shape[1], 'percents', percents)
+
+
 def handle_record(record_list):
+    """
+    处理买卖记录
+    :param record_list:
+    :return:
+    """
     record_list = record_list.sort_values('time')
     tips = []
     stocks = []
