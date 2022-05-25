@@ -44,3 +44,16 @@ def get_date_range(day_str, n):
             days.append(day2str(day + dt.timedelta(days=i)))
         days.append(day_str)
     return days
+
+
+def calculate_time(time_int, adjust_min):
+    """
+    时间运算
+    :param time_int:
+    :param adjust_min
+    :return:
+    """
+    time_int = int(time_int / 1000)
+    time = str2day(str(time_int), yymmdd_hhmmss_long)
+    time = time + dt.timedelta(minutes=adjust_min)
+    return int(day2str(time, yymmdd_hhmmss_long)) * 1000

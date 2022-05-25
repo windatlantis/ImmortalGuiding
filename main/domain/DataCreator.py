@@ -30,6 +30,28 @@ def get_column_name(name, source='bao'):
     return ''
 
 
+def __get_data(result, frequency, source):
+    # 获取3条线的数据
+    close_column = get_column_name('close', source)
+    macdDIF, macdDEA, macd = TaLibService.get_macd(result[close_column].astype(float).values)
+    # 小数点后两位
+    CollectionUtil.round_n(macdDIF, 4)
+    CollectionUtil.round_n(macdDEA, 4)
+    CollectionUtil.round_n(macd, 4)
+
+    date_name = 'date'
+    if frequency in RepoConstants.frequency_min:
+        date_name = 'time'
+    # 前33个为Nan，所以推荐用于计算的数据量一般为你所求日期之间数据量的3倍
+    df_macd = pd.DataFrame({"dif": macdDIF[33:], "dea": macdDEA[33:], "macd": macd[33:]}, index=result[date_name][33:],
+                           columns=['dif', 'dea', 'macd'])
+    # 与原数据合并
+    df_macd_data = pd.merge(df_macd, result, on=date_name, how='left')
+    if frequency in RepoConstants.frequency_min:
+        df_macd_data['time'] = df_macd_data['time'].astype(float)
+    return df_macd, df_macd_data
+
+
 def get_n_year_macd(stock_id, year, read_csv=True, frequency='d', source='bao'):
     """
     获取macd
@@ -51,25 +73,7 @@ def get_n_year_macd(stock_id, year, read_csv=True, frequency='d', source='bao'):
     repository = repository_factory.get(source)
     # k线数据
     result = repository.get_stock_data_n_year_ago(stock_id, year, frequency)
-
-    # 获取3条线的数据
-    close_column = get_column_name('close', source)
-    macdDIF, macdDEA, macd = TaLibService.get_macd(result[close_column].astype(float).values)
-    # 小数点后两位
-    CollectionUtil.round2(macdDIF)
-    CollectionUtil.round2(macdDEA)
-    CollectionUtil.round2(macd)
-
-    date_name = 'date'
-    if frequency in RepoConstants.frequency_min:
-        date_name = 'time'
-    # 前33个为Nan，所以推荐用于计算的数据量一般为你所求日期之间数据量的3倍
-    df_macd = pd.DataFrame({"dif": macdDIF[33:], "dea": macdDEA[33:], "macd": macd[33:]}, index=result[date_name][33:],
-                           columns=['dif', 'dea', 'macd'])
-    # 与原数据合并
-    df_macd_data = pd.merge(df_macd, result, on=date_name, how='left')
-    if frequency in RepoConstants.frequency_min:
-        df_macd_data['time'] = df_macd_data['time'].astype(float)
+    df_macd, df_macd_data = __get_data(result, frequency, source)
 
     # 写文件
     if read_csv:
@@ -112,25 +116,7 @@ def get_n_month_macd(stock_id, month, read_csv=True, frequency='d', source='bao'
     repository = repository_factory.get(source)
     # k线数据
     result = repository.get_stock_data_n_month_age(stock_id, month, frequency)
-
-    # 获取3条线的数据
-    close_column = get_column_name('close', source)
-    macdDIF, macdDEA, macd = TaLibService.get_macd(result[close_column].astype(float).values)
-    # 小数点后两位
-    CollectionUtil.round2(macdDIF)
-    CollectionUtil.round2(macdDEA)
-    CollectionUtil.round2(macd)
-
-    date_name = 'date'
-    if frequency in RepoConstants.frequency_min:
-        date_name = 'time'
-    # 前33个为Nan，所以推荐用于计算的数据量一般为你所求日期之间数据量的3倍
-    df_macd = pd.DataFrame({"dif": macdDIF[33:], "dea": macdDEA[33:], "macd": macd[33:]}, index=result[date_name][33:],
-                           columns=['dif', 'dea', 'macd'])
-    # 与原数据合并
-    df_macd_data = pd.merge(df_macd, result, on=date_name, how='left')
-    if frequency in RepoConstants.frequency_min:
-        df_macd_data['time'] = df_macd_data['time'].astype(float)
+    df_macd, df_macd_data = __get_data(result, frequency, source)
 
     # 写文件
     if read_csv:

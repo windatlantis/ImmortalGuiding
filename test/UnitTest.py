@@ -30,6 +30,8 @@ class MyTestCase(unittest.TestCase):
             for i in range(addition, 0):
                 days.append(day2str(day + dt.timedelta(days=i)))
         print(days)
+        time = calculate_time(20211129094500000, -15)
+        print(time)
 
     def test_pandas(self):
         # data = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])

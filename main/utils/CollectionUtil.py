@@ -13,9 +13,17 @@ def round2(arr):
     :param arr:
     :return:
     """
-    custom_values(arr, lambda x: round(float(x), 2))
+    round_n(arr, 2)
 
-    return
+
+def round_n(arr, n):
+    """
+    保留两位小数
+    :param arr:
+    :param n:
+    :return:
+    """
+    custom_values(arr, lambda x: round(float(x), n))
 
 
 def custom_values(arr, func):
@@ -32,8 +40,6 @@ def custom_values(arr, func):
     else:
         for i in range(arr.size):
             arr[i] = func(arr[i])
-
-    return
 
 
 def df_add(table: DataFrame, data):

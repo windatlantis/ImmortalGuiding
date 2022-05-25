@@ -6,7 +6,9 @@
 """
 
 from main.strategy import Day15mStrategy
+from main.domain import Analysiser
 
 
 def call_day_15min(stock_id, read_csv=True):
     Day15mStrategy.day_15min(stock_id, read_csv)
+    Analysiser.analysis_record(stock_id)
