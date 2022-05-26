@@ -67,7 +67,7 @@ def collect_macd_deviation(cross_extend: DataFrame, price_name='close', date_nam
     for i in range(1, int(dead_cross.shape[0])):
         cur = dead_cross.iloc[i]
         last = dead_cross.iloc[i - 1]
-        if cur['zero_axis'] < last['zero_axis']:
+        if cur['zero_axis'] <= last['zero_axis']:
             data = [cur[date_name], cur[price_name], cur['zero_axis'], 'top', last[date_name]]
             if date_size == 2:
                 data.insert(0, cur['date'])

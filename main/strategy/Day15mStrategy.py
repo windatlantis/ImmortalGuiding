@@ -95,7 +95,8 @@ def day_15min(stock_id, read_csv=True):
             line_cross_soon_60 = LineCrossService.line_cross_soon(macd_60, date_name='time')
             # 15分钟级别背离
             macd_deviation_15 = DeviationService.collect_macd_deviation(line_cross_15, date_name='time')
-            day_60min_sell(day, macd_60_day, line_cross_60, line_cross_soon_60, macd_deviation_15, record_list)
+            sell_model_1 = day_60min_sell(day, macd_60_day, line_cross_60, line_cross_soon_60, macd_deviation_15,
+                                          record_list)
 
     record_list = handle_record(record_list)
     print(record_list)
@@ -183,7 +184,7 @@ def day_15min_buy2(day, line_cross_soon_15: DataFrame, macd_deviation_5: DataFra
         if cur['zero_axis'] <= 0 and cur['date'] == day:
             cur_time = cur['time']
             deviation_5 = bottom_deviation_5[
-                (DateUtil.calculate_time(cur_time, -15) < bottom_deviation_5['time']) & (
+                (bottom_deviation_5['time'] > DateUtil.calculate_time(cur_time, -15)) & (
                         bottom_deviation_5['time'] <= cur_time)]
             if not deviation_5.empty:
                 zero_axis_60 = macd_60_day[
@@ -199,7 +200,8 @@ def day_15min_sell(day, macd_15_day, line_cross_5, line_cross_soon_15, macd_devi
     """
     卖出信号：15分钟级别
             - 在0轴以下，5分钟死叉。
-            - 在0轴以上，15分钟即将死叉，5分钟顶背离。15分钟出现死叉一定卖出。
+            - 在0轴以上，15分钟即将死叉，5分钟顶背离。
+            - 15分钟出现死叉一定卖出。
                 * 如果15分钟把60分钟带上0轴，则改看60分钟信号。
                   即，15分钟买出信号出现时，60分钟MACD在0轴以下，15分钟卖出信号时，60分钟MACD在0轴以上了
                   变更卖出条件为：60分钟即将死叉，15分钟顶背离。如果未出现15分钟顶背离，则60分钟死叉卖出。
@@ -221,37 +223,39 @@ def day_15min_sell(day, macd_15_day, line_cross_5, line_cross_soon_15, macd_devi
     need_load_data = last_record['zero_axis_60'] < 0
     # 正常卖出条件
     dead_cross_5 = line_cross_5[(line_cross_5['cross_type'] == 'dead') & (line_cross_5['true_cross'] == True)]
-    dead_cross_soon_15 = line_cross_soon_15[line_cross_soon_15['cross_soon_type'] == 'dead_soon']
+    dead_cross_soon_15 = line_cross_soon_15[line_cross_soon_15['cross_soon_type'] == 'dead_soon']['time'].unique()
     top_deviation_5 = macd_deviation_5[macd_deviation_5['deviation_type'] == 'top']
-    dead_cross_15 = line_cross_15[(line_cross_15['cross_type'] == 'dead') & (line_cross_15['true_cross'] == True)]
+    dead_cross_15 = line_cross_15[(line_cross_15['cross_type'] == 'dead') & (line_cross_15['true_cross'] == True)][
+        'time'].unique()
     for i in range(macd_15_day.shape[0]):
         cur = macd_15_day.iloc[i]
         cur_time = cur['time']
         if cur['dif'] <= 0:
             dead_5 = dead_cross_5[
-                (DateUtil.calculate_time(cur_time, -15) < dead_cross_5['time']) & (dead_cross_5['time'] <= cur_time)]
+                (dead_cross_5['time'] > DateUtil.calculate_time(cur_time, -15)) & (dead_cross_5['time'] <= cur_time)]
             if not dead_5.empty:
                 __add_to_record_list(record_list, [day, dead_5.iloc[0]['time'], dead_5.iloc[0]['close'], "sell3", 100])
-        else:
-            if cur_time in dead_cross_soon_15['time']:
-                top_5 = top_deviation_5[
-                    (DateUtil.calculate_time(cur_time, -15) < top_deviation_5['time']) & (
-                            top_deviation_5['time'] <= cur_time)]
-                if not top_5.empty:
-                    if need_load_data and \
-                            macd_60_day[(DateUtil.calculate_time(cur_time, 60) > macd_60_day['time']) & (
-                                    cur_time <= macd_60_day['time'])]['dif'] > 0:
-                        return False
-                    else:
-                        __add_to_record_list(record_list,
-                                             [day, top_5.iloc[0]['time'], top_5.iloc[0]['close'], "sell4", 100])
-            elif cur_time in dead_cross_15['time']:
-                if need_load_data and \
-                        macd_60_day[(DateUtil.calculate_time(cur_time, 60) > macd_60_day['time']) & (
-                                cur_time <= macd_60_day['time'])]['dif'] > 0:
+        elif cur_time in dead_cross_soon_15:
+            top_5 = top_deviation_5[
+                (top_deviation_5['time'] > DateUtil.calculate_time(cur_time, -15)) & (
+                        top_deviation_5['time'] <= cur_time)]
+            if not top_5.empty:
+                if need_load_data and macd_60_day[
+                    (DateUtil.calculate_time(cur_time, 60) > macd_60_day['time']) & (cur_time <= macd_60_day['time'])][
+                    'dif'].iloc[0] > 0:
+                    print('{} should sell4, but macd_60_day'.format(int(top_5.iloc[0]['time'])))
                     return False
                 else:
-                    __add_to_record_list(record_list, [day, cur_time, cur['close'], "sell5", 100])
+                    __add_to_record_list(record_list,
+                                         [day, top_5.iloc[0]['time'], top_5.iloc[0]['close'], "sell4", 100])
+        if cur_time in dead_cross_15:
+            if need_load_data and macd_60_day[
+                (DateUtil.calculate_time(cur_time, 60) > macd_60_day['time']) & (cur_time <= macd_60_day['time'])][
+                'dif'].iloc[0] > 0:
+                print('{} should sell5, but macd_60_day'.format(int(cur_time)))
+                return False
+            else:
+                __add_to_record_list(record_list, [day, cur_time, cur['close'], "sell5", 100])
     return True
 
 
@@ -267,32 +271,27 @@ def day_60min_sell(day, macd_60_day, line_cross_60, line_cross_soon_60, macd_dev
     :return:
     """
     # 正常卖出条件
-    dead_cross_soon_60 = line_cross_soon_60[line_cross_soon_60['cross_soon_type'] == 'dead_soon']
+    dead_cross_soon_60 = line_cross_soon_60[line_cross_soon_60['cross_soon_type'] == 'dead_soon']['time'].unique()
     top_deviation_15 = macd_deviation_15[macd_deviation_15['deviation_type'] == 'top']
-    dead_cross_60 = line_cross_60[(line_cross_60['cross_type'] == 'dead') & (line_cross_60['true_cross'] == True)]
+    dead_cross_60 = line_cross_60[(line_cross_60['cross_type'] == 'dead') & (line_cross_60['true_cross'] == True)][
+        'time'].unique()
     for i in range(macd_60_day.shape[0]):
         cur = macd_60_day.iloc[i]
         cur_time = cur['time']
-        if cur_time in dead_cross_soon_60['time']:
+        if cur_time in dead_cross_soon_60:
             top_15 = top_deviation_15[
-                (DateUtil.calculate_time(cur_time, -60) < top_deviation_15['time']) & (
-                            top_deviation_15['time'] <= cur_time)]
+                (top_deviation_15['time'] > DateUtil.calculate_time(cur_time, -60)) & (
+                        top_deviation_15['time'] <= cur_time)]
             if not top_15.empty:
                 __add_to_record_list(record_list, [day, top_15.iloc[0]['time'], top_15.iloc[0]['close'], "sell6", 100])
-        elif cur_time in dead_cross_60['time']:
+                return True
+        elif cur_time in dead_cross_60:
             __add_to_record_list(record_list, [day, cur_time, cur['close'], "sell7", 100])
+            return True
+    return False
 
 
 def __add_to_record_list(record_list: DataFrame, data):
-    # op = data[-1]
-    # tip = ''
-    # if record_list.empty and 'sell' in op:
-    #     tip = 'buy first'
-    # if not record_list.empty:
-    #     last = record_list.iloc[-1]
-    #     if len(last[-2]) == len(op):
-    #         tip = 'repeat'
-    # data.append(tip)
     CollectionUtil.df_add(record_list, data)
 
 
