@@ -20,5 +20,5 @@ class ITradeStrategy(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def match(self, day, time):
+    def match(self, day, time, price):
         pass;

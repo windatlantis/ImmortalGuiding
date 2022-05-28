@@ -32,11 +32,17 @@ def day_15min(stock_id, read_csv=True):
     strategy = Day15TradeStrategy()
     strategy.load_trader(trader)
     holder = DataMemHolder.get_data_from_mem(stock_id)
+    print('ready to action')
     for i in range(20, holder.day_macd_data.shape[0]):
         cur = holder.day_macd_data.iloc[i]
         day = cur['date']
         strategy.load_data(stock_id, day)
-        strategy.match(day, None)
+        day_5min = holder.min5_macd_data[holder.min5_macd_data['date'] == day]
+        for j in range(day_5min.shape[0]):
+            cur_ = day_5min.iloc[j]
+            min5 = cur_['time']
+            strategy.match(day, min5, cur_['close'])
+    print('start handle record')
     record_list = trader.record_map.get(stock_id)
     record_list = handle_record(record_list)
     print(record_list)

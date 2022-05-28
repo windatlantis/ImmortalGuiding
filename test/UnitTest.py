@@ -20,6 +20,8 @@ class MyTestCase(unittest.TestCase):
         l = np.array(columns)
         print(l.shape)
         print(l[0])
+        for i in range(2 * 2 - 1, 0, -1):
+            print(i)
 
     def test_date(self):
         day_str='2022-05-01'

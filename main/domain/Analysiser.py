@@ -49,5 +49,5 @@ def analysis_record(stock_id):
         percents.append(percent)
     record_list.insert(record_list.shape[1], 'earns', earns)
     record_list.insert(record_list.shape[1], 'percents', percents)
-    FileUtil.write_csv(record_list, analysis_file_name.format(stock_id), False)
+    FileUtil.write_csv(record_list, analysis_file_name.format(stock_id))
     print('analysis_record')

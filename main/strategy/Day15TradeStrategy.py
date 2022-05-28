@@ -16,10 +16,12 @@ from main.utils import CollectionUtil, DateUtil
 
 mode_day_15min_sell = 1
 mode_day_60min_sell = 2
-effective_time_60_dead_soon = 'et60ds'
-effective_time_15_top_deviation = 'et15td'
-effective_time_15_dead_soon = 'et15ds'
-effective_time_5_top_deviation = 'et5td'
+occurrence_time_60_dead_soon = 'et60ds'
+occurrence_time_15_top_deviation = 'et15td'
+occurrence_time_15_dead_soon = 'et15ds'
+occurrence_time_5_top_deviation = 'et5td'
+occurrence_time_15_golden_soon = 'et15gs'
+occurrence_time_5_bottom_deviation = 'et5bd'
 
 
 class Day15TradeStrategy(ITradeStrategy):
@@ -117,17 +119,50 @@ class Day15TradeStrategy(ITradeStrategy):
     def load_trader(self, trader: ITrader):
         self.__trader = trader
 
-    def match(self, day, time):
+    def match(self, day, time, price):
         golden_cross_day = day in self.__golden_cross_days
         if golden_cross_day:
-            self.__day_15min_buy1(day, time)
-            self.__day_15min_buy2(day, time)
-        if self.__mode == 1:
-            self.__day_15min_sell(day, time)
-        elif self.__mode == 2:
-            self.__day_60min_sell(day, time)
+            self.__day_15min_buy2(day, time, price)
+            self.__day_15min_buy1(day, time, price)
+        if self.__mode == mode_day_15min_sell:
+            self.__day_15min_sell(day, time, price)
+        elif self.__mode == mode_day_60min_sell:
+            self.__day_60min_sell(day, time, price)
 
-    def __day_15min_buy1(self, day, time):
+    def __change_mode(self, mode):
+        self.__mode = mode
+
+    def __zero_axis_60(self, cur_time):
+        return self.__macd_60_day[
+            (DateUtil.calculate_time_float(cur_time, 60) > self.__macd_60_day['time']) & (
+                    cur_time <= self.__macd_60_day['time'])]['dif'].iloc[0]
+
+    def __delay_judge_point(self, self_symbol, other_symbol, cur_time, between_time, success_action):
+        if other_symbol in self.__effective_time:
+            if DateUtil.between_minutes(self.__effective_time.get(other_symbol), cur_time,
+                                        self.__mem_holder.trade_date) <= between_time:
+                success_action()
+            self.__effective_time.pop(other_symbol)
+        else:
+            self.__effective_time[self_symbol] = cur_time
+
+    def __delay_judge_point2(self, self_symbol, other_symbol, cur_time, between_time, need_check_mode_2,
+                             success_action):
+        if other_symbol in self.__effective_time:
+            if DateUtil.between_minutes(self.__effective_time.get(other_symbol), cur_time,
+                                        self.__mem_holder.trade_date) <= between_time:
+                if need_check_mode_2 and self.__macd_60_day[
+                    (DateUtil.calculate_time_float(cur_time, 60) > self.__macd_60_day['time']) & (
+                            cur_time <= self.__macd_60_day['time'])]['dif'].iloc[0] > 0:
+                    print(f'{cur_time} should sell4, but macd_60_day')
+                    self.__change_mode(mode_day_60min_sell)
+                else:
+                    success_action()
+            self.__effective_time.pop(other_symbol)
+        else:
+            self.__effective_time[self_symbol] = cur_time
+
+    def __day_15min_buy1(self, day, time, price):
         """
         买入信号1：【日线macd金叉，且开口向上】【15分钟金叉，在0轴或0轴以下】。
         :param day:
@@ -138,17 +173,25 @@ class Day15TradeStrategy(ITradeStrategy):
         golden_cross = LineCrossService.filter_golden_cross(self.__line_cross_15)
         if golden_cross.empty:
             return
-        for i in range(golden_cross.shape[0]):
-            cur = golden_cross.iloc[i]
-            # 在0轴或0轴以下
-            if cur['zero_axis'] <= 0 and cur['date'] == day:
-                cur_time = cur['time']
-                zero_axis_60 = self.__macd_60_day[
-                    (DateUtil.calculate_time_float(cur_time, 60) > self.__macd_60_day['time']) & (
-                            cur_time <= self.__macd_60_day['time'])]['dif'].iloc[0]
-                self.__trader.buy(self.__stock_id, day, cur_time, cur['close'], 'buy1', zero_axis_60=zero_axis_60)
+        # 【15分钟金叉，在0轴或0轴以下】
+        if time in golden_cross['time'].unique() and golden_cross[golden_cross['time'] == time].iloc[0][
+            'zero_axis'] <= 0:
+            self.__trader.buy(self.__stock_id, day, time, price, 'buy1', zero_axis_60=self.__zero_axis_60(time))
+        # # 15分钟线金叉
+        # golden_cross = LineCrossService.filter_golden_cross(self.__line_cross_15)
+        # if golden_cross.empty:
+        #     return
+        # for i in range(golden_cross.shape[0]):
+        #     cur = golden_cross.iloc[i]
+        #     # 在0轴或0轴以下
+        #     if cur['zero_axis'] <= 0 and cur['date'] == day:
+        #         cur_time = cur['time']
+        #         zero_axis_60 = self.__macd_60_day[
+        #             (DateUtil.calculate_time_float(cur_time, 60) > self.__macd_60_day['time']) & (
+        #                     cur_time <= self.__macd_60_day['time'])]['dif'].iloc[0]
+        #         self.__trader.buy(self.__stock_id, day, cur_time, cur['close'], 'buy1', zero_axis_60=zero_axis_60)
 
-    def __day_15min_buy2(self, day, time):
+    def __day_15min_buy2(self, day, time, price):
         """
         买入信号2：【日线macd金叉，且开口向上】【15分钟即将金叉，在0轴或0轴以下】，【5分钟级别底背离】。
         :param day:
@@ -161,22 +204,39 @@ class Day15TradeStrategy(ITradeStrategy):
         bottom_deviation_5 = DeviationService.filter_macd_bottom_deviation(self.__macd_deviation_5)
         if golden_cross_15.empty or bottom_deviation_5.empty:
             return
-        for i in range(golden_cross_15.shape[0]):
-            cur = golden_cross_15.iloc[i]
-            # 在0轴或0轴以下
-            if cur['zero_axis'] <= 0 and cur['date'] == day:
-                cur_time = cur['time']
-                deviation_5 = bottom_deviation_5[
-                    (bottom_deviation_5['time'] > DateUtil.calculate_time_float(cur_time, -15)) & (
-                            bottom_deviation_5['time'] <= cur_time)]
-                if not deviation_5.empty:
-                    zero_axis_60 = self.__macd_60_day[
-                        (DateUtil.calculate_time_float(cur_time, 60) > self.__macd_60_day['time']) & (
-                                cur_time <= self.__macd_60_day['time'])]['dif'].iloc[0]
-                    self.__trader.buy(self.__stock_id, day, deviation_5.iloc[0]['time'], deviation_5.iloc[0]['close'],
-                                      'buy2', zero_axis_60=zero_axis_60)
+        # 【15分钟即将金叉，在0轴或0轴以下】
+        if time in golden_cross_15['time'].unique() and golden_cross_15[golden_cross_15['time'] == time].iloc[0][
+            'zero_axis'] < 0:
+            func = lambda: self.__trader.buy(self.__stock_id, day, time, price, 'buy2',
+                                             zero_axis_60=self.__zero_axis_60(time))
+            self.__delay_judge_point(occurrence_time_15_golden_soon, occurrence_time_5_bottom_deviation, time, 15, func)
+        # 【5分钟级别底背离】
+        if time in bottom_deviation_5['time'].unique():
+            func = lambda: self.__trader.buy(self.__stock_id, day, time, price, 'buy2',
+                                             zero_axis_60=self.__zero_axis_60(time))
+            self.__delay_judge_point(occurrence_time_5_bottom_deviation, occurrence_time_15_golden_soon, time, 15, func)
+        # # 15分钟即将金叉
+        # golden_cross_15 = LineCrossService.filter_golden_cross_soon(self.__line_cross_soon_15)
+        # # 5分钟级别底背离
+        # bottom_deviation_5 = DeviationService.filter_macd_bottom_deviation(self.__macd_deviation_5)
+        # if golden_cross_15.empty or bottom_deviation_5.empty:
+        #     return
+        # for i in range(golden_cross_15.shape[0]):
+        #     cur = golden_cross_15.iloc[i]
+        #     # 在0轴或0轴以下
+        #     if cur['zero_axis'] <= 0 and cur['date'] == day:
+        #         cur_time = cur['time']
+        #         deviation_5 = bottom_deviation_5[
+        #             (bottom_deviation_5['time'] > DateUtil.calculate_time_float(cur_time, -15)) & (
+        #                     bottom_deviation_5['time'] <= cur_time)]
+        #         if not deviation_5.empty:
+        #             zero_axis_60 = self.__macd_60_day[
+        #                 (DateUtil.calculate_time_float(cur_time, 60) > self.__macd_60_day['time']) & (
+        #                         cur_time <= self.__macd_60_day['time'])]['dif'].iloc[0]
+        #             self.__trader.buy(self.__stock_id, day, deviation_5.iloc[0]['time'], deviation_5.iloc[0]['close'],
+        #                               'buy2', zero_axis_60=zero_axis_60)
 
-    def __day_15min_sell(self, day, time):
+    def __day_15min_sell(self, day, time, price):
         """
         信号一：【15分钟级别，在0轴以下】，【5分钟死叉】。——每5min判断一次
         信号二：【15分钟级别，在0轴以上】，【5分钟顶背离 且 15分钟即将死叉】（只要30分钟内两个条件都出现即可），最后，【15分钟出现死叉】一定卖出。
@@ -191,77 +251,122 @@ class Day15TradeStrategy(ITradeStrategy):
         # 加载条件*所需数据
         need_check_mode_2 = last_record['zero_axis_60'] < 0
         # 正常卖出条件
-        dead_cross_5 = LineCrossService.filter_dead_cross(self.__line_cross_5)
+        dead_cross_5 = LineCrossService.filter_dead_cross(self.__line_cross_5)['time'].unique()
         dead_cross_soon_15 = LineCrossService.filter_dead_cross_soon(self.__line_cross_soon_15)['time'].unique()
-        top_deviation_5 = DeviationService.filter_macd_top_deviation(self.__macd_deviation_5)
+        top_deviation_5 = DeviationService.filter_macd_top_deviation(self.__macd_deviation_5)['time'].unique()
         dead_cross_15 = LineCrossService.filter_dead_cross(self.__line_cross_15)['time'].unique()
-        for i in range(self.__macd_15_day.shape[0]):
-            cur = self.__macd_15_day.iloc[i]
-            cur_time = cur['time']
+
+        last_15_minutes = DateUtil.last_15_minutes_time_float(time)
+        temp = self.__macd_15_day
+        if self.__macd_15_day[self.__macd_15_day['time'] == last_15_minutes].iloc[0]['dif'] <= 0:
             # 【15分钟级别，在0轴以下】，【5分钟死叉】
-            if cur['dif'] <= 0:
-                dead_5 = dead_cross_5[
-                    (dead_cross_5['time'] > DateUtil.calculate_time_float(cur_time, -15)) & (
-                            dead_cross_5['time'] <= cur_time)]
-                if not dead_5.empty:
-                    self.__trader.sell(self.__stock_id, day, dead_5.iloc[0]['time'], dead_5.iloc[0]['close'], 'sell3')
-            else:
-                # 【15分钟级别，在0轴以上】
-                # 【15分钟即将死叉】
-                if cur_time in dead_cross_soon_15:
-                    if effective_time_5_top_deviation in self.__effective_time:
-                        if DateUtil.between_minutes(self.__effective_time.get(effective_time_5_top_deviation),
-                                                    cur_time,
-                                                    self.__mem_holder.trade_date) <= 30:
-                            if need_check_mode_2 and self.__macd_60_day[
-                                (DateUtil.calculate_time_float(cur_time, 60) > self.__macd_60_day['time']) & (
-                                        cur_time <= self.__macd_60_day['time'])]['dif'].iloc[0] > 0:
-                                print('{} should sell4, but macd_60_day'.format(cur_time))
-                                self.__change_mode(mode_day_60min_sell)
-                                return False
-                            else:
-                                self.__trader.sell(self.__stock_id, day, cur_time, cur['close'], 'sell4')
-                        else:
-                            self.__effective_time.pop(effective_time_5_top_deviation)
-                    else:
-                        self.__effective_time[effective_time_15_dead_soon] = cur_time
-
-                # 【5分钟顶背离】
-                top_5 = top_deviation_5[
-                    (top_deviation_5['time'] > DateUtil.calculate_time_float(cur_time, -15)) & (
-                            top_deviation_5['time'] <= cur_time)]
-                if not top_5.empty:
-                    if effective_time_15_dead_soon in self.__effective_time:
-                        if DateUtil.between_minutes(self.__effective_time.get(effective_time_15_dead_soon), cur_time,
-                                                    self.__mem_holder.trade_date) <= 30:
-
-                            if need_check_mode_2 and self.__macd_60_day[
-                                (DateUtil.calculate_time_float(cur_time, 60) > self.__macd_60_day['time']) & (
-                                        cur_time <= self.__macd_60_day['time'])]['dif'].iloc[0] > 0:
-                                print('{} should sell4, but macd_60_day'.format(top_5.iloc[0]['time']))
-                                self.__change_mode(mode_day_60min_sell)
-                                return False
-                            else:
-                                self.__trader.sell(self.__stock_id, day, top_5.iloc[0]['time'], top_5.iloc[0]['close'],
-                                                   'sell4')
-                        else:
-                            self.__effective_time.pop(effective_time_15_dead_soon)
-                    else:
-                        self.__effective_time[effective_time_5_top_deviation] = cur_time
+            if time in dead_cross_5:
+                self.__trader.sell(self.__stock_id, day, time, price, 'sell3')
+        else:
+            origin_mode = self.__mode
+            # 【15分钟级别，在0轴以上】
+            # 【15分钟即将死叉】
+            if time in dead_cross_soon_15:
+                func = lambda: self.__trader.sell(self.__stock_id, day, time, price, 'sell4')
+                self.__delay_judge_point2(occurrence_time_15_dead_soon, occurrence_time_5_top_deviation, time, 30,
+                                          need_check_mode_2, func)
+                if not origin_mode == self.__mode:
+                    return
+            # 【5分钟顶背离】
+            if time in top_deviation_5:
+                func = lambda: self.__trader.sell(self.__stock_id, day, time, price, 'sell4')
+                self.__delay_judge_point2(occurrence_time_5_top_deviation, occurrence_time_15_dead_soon, time, 30,
+                                          need_check_mode_2, func)
+                if not origin_mode == self.__mode:
+                    return
             # 【15分钟出现死叉】一定卖出
-            if cur_time in dead_cross_15:
+            if time in dead_cross_15:
                 if need_check_mode_2 and self.__macd_60_day[
-                    (DateUtil.calculate_time_float(cur_time, 60) > self.__macd_60_day['time']) & (
-                            cur_time <= self.__macd_60_day['time'])]['dif'].iloc[0] > 0:
-                    print('{} should sell5, but macd_60_day'.format(int(cur_time)))
+                    (DateUtil.calculate_time_float(time, 60) > self.__macd_60_day['time']) & (
+                            time <= self.__macd_60_day['time'])]['dif'].iloc[0] > 0:
+                    print(f'{time} should sell5, but macd_60_day')
                     self.__change_mode(mode_day_60min_sell)
-                    return False
+                    return
                 else:
-                    self.__trader.sell(self.__stock_id, day, cur_time, cur['close'], 'sell5')
+                    self.__trader.sell(self.__stock_id, day, time, price, 'sell5')
+        # # 先买入才能卖出
+        # last_record = self.__trader.last_record(self.__stock_id)
+        # if last_record is None or 'sell' in last_record['operation']:
+        #     return True
+        # # 加载条件*所需数据
+        # need_check_mode_2 = last_record['zero_axis_60'] < 0
+        # # 正常卖出条件
+        # dead_cross_5 = LineCrossService.filter_dead_cross(self.__line_cross_5)
+        # dead_cross_soon_15 = LineCrossService.filter_dead_cross_soon(self.__line_cross_soon_15)['time'].unique()
+        # top_deviation_5 = DeviationService.filter_macd_top_deviation(self.__macd_deviation_5)
+        # dead_cross_15 = LineCrossService.filter_dead_cross(self.__line_cross_15)['time'].unique()
+        # for i in range(self.__macd_15_day.shape[0]):
+        #     cur = self.__macd_15_day.iloc[i]
+        #     cur_time = cur['time']
+        #     # 【15分钟级别，在0轴以下】，【5分钟死叉】
+        #     if cur['dif'] <= 0:
+        #         dead_5 = dead_cross_5[
+        #             (dead_cross_5['time'] > DateUtil.calculate_time_float(cur_time, -15)) & (
+        #                     dead_cross_5['time'] <= cur_time)]
+        #         if not dead_5.empty:
+        #             self.__trader.sell(self.__stock_id, day, dead_5.iloc[0]['time'], dead_5.iloc[0]['close'], 'sell3')
+        #     else:
+        #         # 【15分钟级别，在0轴以上】
+        #         # 【15分钟即将死叉】
+        #         if cur_time in dead_cross_soon_15:
+        #             if occurrence_time_5_top_deviation in self.__effective_time:
+        #                 if DateUtil.between_minutes(self.__effective_time.get(occurrence_time_5_top_deviation),
+        #                                             cur_time,
+        #                                             self.__mem_holder.trade_date) <= 30:
+        #                     if need_check_mode_2 and self.__macd_60_day[
+        #                         (DateUtil.calculate_time_float(cur_time, 60) > self.__macd_60_day['time']) & (
+        #                                 cur_time <= self.__macd_60_day['time'])]['dif'].iloc[0] > 0:
+        #                         print('{} should sell4, but macd_60_day'.format(cur_time))
+        #                         self.__change_mode(mode_day_60min_sell)
+        #                         return False
+        #                     else:
+        #                         self.__trader.sell(self.__stock_id, day, cur_time, cur['close'], 'sell4')
+        #                 else:
+        #                     self.__effective_time.pop(occurrence_time_5_top_deviation)
+        #             else:
+        #                 self.__effective_time[occurrence_time_15_dead_soon] = cur_time
+        #
+        #         # 【5分钟顶背离】
+        #         top_5 = top_deviation_5[
+        #             (top_deviation_5['time'] > DateUtil.calculate_time_float(cur_time, -15)) & (
+        #                     top_deviation_5['time'] <= cur_time)]
+        #         if not top_5.empty:
+        #             if occurrence_time_15_dead_soon in self.__effective_time:
+        #                 if DateUtil.between_minutes(self.__effective_time.get(occurrence_time_15_dead_soon), cur_time,
+        #                                             self.__mem_holder.trade_date) <= 30:
+        #
+        #                     if need_check_mode_2 and self.__macd_60_day[
+        #                         (DateUtil.calculate_time_float(cur_time, 60) > self.__macd_60_day['time']) & (
+        #                                 cur_time <= self.__macd_60_day['time'])]['dif'].iloc[0] > 0:
+        #                         print('{} should sell4, but macd_60_day'.format(top_5.iloc[0]['time']))
+        #                         self.__change_mode(mode_day_60min_sell)
+        #                         return False
+        #                     else:
+        #                         self.__trader.sell(self.__stock_id, day, top_5.iloc[0]['time'], top_5.iloc[0]['close'],
+        #                                            'sell4')
+        #                 else:
+        #                     self.__effective_time.pop(occurrence_time_15_dead_soon)
+        #             else:
+        #                 self.__effective_time[occurrence_time_5_top_deviation] = cur_time
+        #     # 【15分钟出现死叉】一定卖出
+        #     if cur_time in dead_cross_15:
+        #         if need_check_mode_2 and self.__macd_60_day[
+        #             (DateUtil.calculate_time_float(cur_time, 60) > self.__macd_60_day['time']) & (
+        #                     cur_time <= self.__macd_60_day['time'])]['dif'].iloc[0] > 0:
+        #             print('{} should sell5, but macd_60_day'.format(int(cur_time)))
+        #             self.__change_mode(mode_day_60min_sell)
+        #             return False
+        #         else:
+        #             self.__trader.sell(self.__stock_id, day, cur_time, cur['close'], 'sell5')
+        #
+        # return True
 
-        return True
-
-    def __day_60min_sell(self, day, time):
+    def __day_60min_sell(self, day, time, price):
         """
         信号二的升级60分钟卖点方案：如果15分钟把60分钟带上0轴，则改看60分钟信号。即：15分钟买出信号出现时，60分钟MACD在0轴以下，15分钟卖出信号时，60分钟MACD在0轴以上了
         变更卖出条件为：【60分钟即将死叉，15分钟顶背离】（只要2个小时内两个条件都出现即可）。最后，则【60分钟死叉】一定卖出。
@@ -271,45 +376,68 @@ class Day15TradeStrategy(ITradeStrategy):
         """
         # 正常卖出条件
         dead_cross_soon_60 = LineCrossService.filter_dead_cross_soon(self.__line_cross_soon_60)['time'].unique()
-        top_deviation_15 = DeviationService.filter_macd_top_deviation(self.__macd_deviation_15)
+        top_deviation_15 = DeviationService.filter_macd_top_deviation(self.__macd_deviation_15)['time'].unique()
         dead_cross_60 = LineCrossService.filter_dead_cross(self.__line_cross_60)['time'].unique()
-        for i in range(self.__macd_60_day.shape[0]):
-            cur = self.__macd_60_day.iloc[i]
-            cur_time = cur['time']
-            # 60分钟即将死叉
-            if cur_time in dead_cross_soon_60:
-                if effective_time_15_top_deviation in self.__effective_time:
-                    if DateUtil.between_minutes(self.__effective_time.get(effective_time_15_top_deviation), cur_time,
-                                                self.__mem_holder.trade_date) <= 120:
-                        self.__trader.sell(self.__stock_id, day, cur_time, cur['close'], 'sell6')
-                        self.__change_mode(mode_day_15min_sell)
-                        return True
-                    else:
-                        self.__effective_time.pop(effective_time_15_top_deviation)
-                else:
-                    self.__effective_time[effective_time_60_dead_soon] = cur_time
-            # 15分钟顶背离
-            top_15 = top_deviation_15[
-                (top_deviation_15['time'] > DateUtil.calculate_time_float(cur_time, -60)) & (
-                        top_deviation_15['time'] <= cur_time)]
-            if not top_15.empty:
-                if effective_time_60_dead_soon in self.__effective_time:
-                    if DateUtil.between_minutes(self.__effective_time.get(effective_time_60_dead_soon), cur_time,
-                                                self.__mem_holder.trade_date) <= 120:
-                        self.__trader.sell(self.__stock_id, day, top_15.iloc[0]['time'], top_15.iloc[0]['close'],
-                                           'sell6')
-                        self.__change_mode(mode_day_15min_sell)
-                        return True
-                    else:
-                        self.__effective_time.pop(effective_time_60_dead_soon)
-                else:
-                    self.__effective_time[effective_time_15_top_deviation] = cur_time
-            # 【60分钟死叉】一定卖出
-            if cur_time in dead_cross_60:
-                self.__trader.sell(self.__stock_id, day, cur_time, cur['close'], 'sell7')
-                self.__change_mode(mode_day_15min_sell)
-                return True
-        return False
+        origin_mode = self.__mode
+        # 【60分钟即将死叉】
+        if time in dead_cross_soon_60:
+            func = lambda: self.__day_60min_sell_func(day, time, price)
+            self.__delay_judge_point(occurrence_time_60_dead_soon, occurrence_time_15_top_deviation, time, 120, func)
+            if not origin_mode == self.__mode:
+                return
+        # 【15分钟顶背离】
+        if time in top_deviation_15:
+            func = lambda: self.__day_60min_sell_func(day, time, price)
+            self.__delay_judge_point(occurrence_time_15_top_deviation, occurrence_time_60_dead_soon, time, 120, func)
+            if not origin_mode == self.__mode:
+                return
+        # 【60分钟死叉】一定卖出
+        if time in dead_cross_60:
+            self.__trader.sell(self.__stock_id, day, time, price, 'sell7')
+            self.__change_mode(mode_day_15min_sell)
+            return
+        # # 正常卖出条件
+        # dead_cross_soon_60 = LineCrossService.filter_dead_cross_soon(self.__line_cross_soon_60)['time'].unique()
+        # top_deviation_15 = DeviationService.filter_macd_top_deviation(self.__macd_deviation_15)
+        # dead_cross_60 = LineCrossService.filter_dead_cross(self.__line_cross_60)['time'].unique()
+        # for i in range(self.__macd_60_day.shape[0]):
+        #     cur = self.__macd_60_day.iloc[i]
+        #     cur_time = cur['time']
+        #     # 60分钟即将死叉
+        #     if cur_time in dead_cross_soon_60:
+        #         if occurrence_time_15_top_deviation in self.__effective_time:
+        #             if DateUtil.between_minutes(self.__effective_time.get(occurrence_time_15_top_deviation), cur_time,
+        #                                         self.__mem_holder.trade_date) <= 120:
+        #                 self.__trader.sell(self.__stock_id, day, cur_time, cur['close'], 'sell6')
+        #                 self.__change_mode(mode_day_15min_sell)
+        #                 return True
+        #             else:
+        #                 self.__effective_time.pop(occurrence_time_15_top_deviation)
+        #         else:
+        #             self.__effective_time[occurrence_time_60_dead_soon] = cur_time
+        #     # 15分钟顶背离
+        #     top_15 = top_deviation_15[
+        #         (top_deviation_15['time'] > DateUtil.calculate_time_float(cur_time, -60)) & (
+        #                 top_deviation_15['time'] <= cur_time)]
+        #     if not top_15.empty:
+        #         if occurrence_time_60_dead_soon in self.__effective_time:
+        #             if DateUtil.between_minutes(self.__effective_time.get(occurrence_time_60_dead_soon), cur_time,
+        #                                         self.__mem_holder.trade_date) <= 120:
+        #                 self.__trader.sell(self.__stock_id, day, top_15.iloc[0]['time'], top_15.iloc[0]['close'],
+        #                                    'sell6')
+        #                 self.__change_mode(mode_day_15min_sell)
+        #                 return True
+        #             else:
+        #                 self.__effective_time.pop(occurrence_time_60_dead_soon)
+        #         else:
+        #             self.__effective_time[occurrence_time_15_top_deviation] = cur_time
+        #     # 【60分钟死叉】一定卖出
+        #     if cur_time in dead_cross_60:
+        #         self.__trader.sell(self.__stock_id, day, cur_time, cur['close'], 'sell7')
+        #         self.__change_mode(mode_day_15min_sell)
+        #         return True
+        # return False
 
-    def __change_mode(self, mode):
-        self.__mode = mode
+    def __day_60min_sell_func(self, day, time, price):
+        self.__trader.sell(self.__stock_id, day, time, price, 'sell6')
+        self.__change_mode(mode_day_15min_sell)

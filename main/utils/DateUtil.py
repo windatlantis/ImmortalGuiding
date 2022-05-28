@@ -35,6 +35,10 @@ def time2date(time_float):
     return str2day(str(time_float), yymmdd_hhmmss_long)
 
 
+def date2time(date):
+    return float(day2str(date, yymmdd_hhmmss_long) + '000')
+
+
 def get_date_range(day_str, n):
     """
     获取连续n+1天（算上day_str）
@@ -132,3 +136,19 @@ def between_minutes_in_one_day(date_time1, date_time2):
         return delta.seconds / 60
     else:
         return delta.seconds / 60 - 90
+
+
+def last_15_minutes_time_float(time_float):
+    date = time2date(time_float)
+    minute = date.minute
+    if minute == 0:
+        return time_float
+    if minute <= 15:
+        return date2time(datetime(year=date.year, month=date.month, day=date.day, hour=date.hour, minute=15, second=0))
+    elif minute <= 30:
+        return date2time(datetime(year=date.year, month=date.month, day=date.day, hour=date.hour, minute=30, second=0))
+    elif minute <= 45:
+        return date2time(datetime(year=date.year, month=date.month, day=date.day, hour=date.hour, minute=45, second=0))
+    else:
+        return date2time(datetime(year=date.year, month=date.month, day=date.day, hour=date.hour, minute=0, second=0)
+                         + dt.timedelta(hours=1))

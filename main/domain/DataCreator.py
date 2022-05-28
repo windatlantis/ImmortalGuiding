@@ -4,13 +4,15 @@
 @Author: windatlantis
 @File : DataCreator.py
 """
+import datetime
+
 import pandas as pd
 
 from main.repository import RepoConstants
-from main.repository.BaoStockRepository import BaoStockRepository
 from main.repository.AkShareRepository import AkShareRepository
+from main.repository.BaoStockRepository import BaoStockRepository
 from main.service import TaLibService
-from main.utils import CollectionUtil
+from main.utils import CollectionUtil, DateUtil
 from main.utils import FileUtil
 
 repository_factory = {
@@ -72,7 +74,17 @@ def get_n_year_macd(stock_id, year, read_csv=True, frequency='d', source='bao'):
 
     repository = repository_factory.get(source)
     # k线数据
-    result = repository.get_stock_data_n_year_ago(stock_id, year, frequency)
+    today = datetime.datetime.today()
+    result = None
+    for i in range(year * 2, 0, -1):
+        start = today + datetime.timedelta(days=-30 * 6 * i)
+        end = start + datetime.timedelta(days=30 * 6)
+        data = repository.get_stock_data_by_date(stock_id, DateUtil.format_yymmdd(start),
+                                                 DateUtil.format_yymmdd(end), frequency)
+        if result is None:
+            result = pd.DataFrame(columns=data.columns)
+        CollectionUtil.df_add(result, data)
+
     df_macd, df_macd_data = __get_data(result, frequency, source)
 
     # 写文件
