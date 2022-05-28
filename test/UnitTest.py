@@ -18,7 +18,6 @@ class MyTestCase(unittest.TestCase):
         columns = date_arr + ['zero_axis', 'cross_type', 'true_cross']
         print(columns)
         l = np.array(columns)
-        print(l.shape)
         print(l[0])
         for i in range(2 * 2 - 1, 0, -1):
             print(i)
