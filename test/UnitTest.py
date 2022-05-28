@@ -17,6 +17,9 @@ class MyTestCase(unittest.TestCase):
         date_arr = ['date', 'aaa']
         columns = date_arr + ['zero_axis', 'cross_type', 'true_cross']
         print(columns)
+        l = np.array(columns)
+        print(l.shape)
+        print(l[0])
 
     def test_date(self):
         day_str='2022-05-01'
@@ -30,7 +33,7 @@ class MyTestCase(unittest.TestCase):
             for i in range(addition, 0):
                 days.append(day2str(day + dt.timedelta(days=i)))
         print(days)
-        time = calculate_time(20211129094500000, -15)
+        time = calculate_time_float(20211129094500000, -15)
         print(time)
 
     def test_pandas(self):

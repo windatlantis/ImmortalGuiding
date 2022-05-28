@@ -42,8 +42,8 @@ def collect_price_macd_deviation(macd_data: DataFrame, point_extend: DataFrame, 
 def collect_macd_deviation(cross_extend: DataFrame, price_name='close', date_name='date'):
     """
     单macd指标背离
-    底背离：2个macd金叉点，下一个比上一个高
-    顶背离：2个macd死叉点，下一个比上一个低
+    底背离：2个macd金叉点，下一个比上一个高，或相等。
+    顶背离：2个macd死叉点，下一个比上一个低，或相等。
     :param cross_extend: 
     :param price_name: 
     :param date_name: 
@@ -58,7 +58,7 @@ def collect_macd_deviation(cross_extend: DataFrame, price_name='close', date_nam
     for i in range(1, int(golden_cross.shape[0])):
         cur = golden_cross.iloc[i]
         last = golden_cross.iloc[i - 1]
-        if cur['zero_axis'] > last['zero_axis']:
+        if cur['zero_axis'] >= last['zero_axis']:
             data = [cur[date_name], cur[price_name], cur['zero_axis'], 'bottom', last[date_name]]
             if date_size == 2:
                 data.insert(0, cur['date'])
@@ -73,3 +73,11 @@ def collect_macd_deviation(cross_extend: DataFrame, price_name='close', date_nam
                 data.insert(0, cur['date'])
             CollectionUtil.df_add(deviation_collector, data)
     return deviation_collector
+
+
+def filter_macd_top_deviation(macd_deviation: DataFrame):
+    return macd_deviation[macd_deviation['deviation_type'] == 'top']
+
+
+def filter_macd_bottom_deviation(macd_deviation: DataFrame):
+    return macd_deviation[macd_deviation['deviation_type'] == 'bottom']

@@ -18,7 +18,7 @@ def round2(arr):
 
 def round_n(arr, n):
     """
-    保留两位小数
+    保留n位小数
     :param arr:
     :param n:
     :return:

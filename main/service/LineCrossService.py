@@ -81,3 +81,23 @@ def line_cross_soon(macd_price_data: DataFrame, line_name='macd', price_name='cl
                 data.insert(0, cur['date'])
             CollectionUtil.df_add(df_extend, data)
     return df_extend
+
+
+def filter_dead_cross(line_cross_: DataFrame, is_true=True):
+    if is_true:
+        return line_cross_[(line_cross_['cross_type'] == 'dead') & (line_cross_['true_cross'] == True)]
+    return line_cross_[(line_cross_['cross_type'] == 'dead')]
+
+
+def filter_golden_cross(line_cross_: DataFrame, is_true=True):
+    if is_true:
+        return line_cross_[(line_cross_['cross_type'] == 'golden') & (line_cross_['true_cross'] == True)]
+    return line_cross_[(line_cross_['cross_type'] == 'golden')]
+
+
+def filter_dead_cross_soon(line_cross_: DataFrame):
+    return line_cross_[(line_cross_['cross_soon_type'] == 'dead_soon')]
+
+
+def filter_golden_cross_soon(line_cross_: DataFrame):
+    return line_cross_[(line_cross_['cross_soon_type'] == 'golden_soon')]
