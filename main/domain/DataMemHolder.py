@@ -25,10 +25,10 @@ class MemHolder:
         # min60_macd, min60_macd_data = DataCreator.get_half_year_macd(stock_id, read_csv, frequency='60')
         # min15_macd, min15_macd_data = DataCreator.get_half_year_macd(stock_id, read_csv, frequency='15')
         # min5_macd, min5_macd_data = DataCreator.get_half_year_macd(stock_id, read_csv, frequency='5')
-        day_macd, day_macd_data = DataCreator.get_n_year_macd(stock_id, 2, read_csv)
-        min60_macd, min60_macd_data = DataCreator.get_n_year_macd(stock_id, 2, read_csv, frequency='60')
-        min15_macd, min15_macd_data = DataCreator.get_n_year_macd(stock_id, 2, read_csv, frequency='15')
-        min5_macd, min5_macd_data = DataCreator.get_n_year_macd(stock_id, 2, read_csv, frequency='5')
+        day_macd, day_macd_data = DataCreator.get_n_year_macd(stock_id, 1, read_csv)
+        min60_macd, min60_macd_data = DataCreator.get_n_year_macd(stock_id, 1, read_csv, frequency='60')
+        min15_macd, min15_macd_data = DataCreator.get_n_year_macd(stock_id, 1, read_csv, frequency='15')
+        min5_macd, min5_macd_data = DataCreator.get_n_year_macd(stock_id, 1, read_csv, frequency='5')
         self.day_macd_data = day_macd_data
         self.min60_macd_data = min60_macd_data
         self.min15_macd_data = min15_macd_data

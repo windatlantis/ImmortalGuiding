@@ -120,6 +120,13 @@ class Day15TradeStrategy(ITradeStrategy):
         self.__trader = trader
 
     def match(self, day, time, price):
+        """
+        匹配买卖点
+        :param day:
+        :param time:
+        :param price:
+        :return:
+        """
         golden_cross_day = day in self.__golden_cross_days
         if golden_cross_day:
             self.__day_15min_buy2(day, time, price)
@@ -130,14 +137,33 @@ class Day15TradeStrategy(ITradeStrategy):
             self.__day_60min_sell(day, time, price)
 
     def __change_mode(self, mode):
+        """
+        切换卖出模式
+        :param mode:
+        :return:
+        """
         self.__mode = mode
 
     def __zero_axis_60(self, cur_time):
+        """
+        60分钟macd的dif
+        :param cur_time:
+        :return:
+        """
         return self.__macd_60_day[
             (DateUtil.calculate_time_float(cur_time, 60) > self.__macd_60_day['time']) & (
                     cur_time <= self.__macd_60_day['time'])]['dif'].iloc[0]
 
     def __delay_judge_point(self, self_symbol, other_symbol, cur_time, between_time, success_action):
+        """
+        延迟判断是否买卖点
+        :param self_symbol: 自己的缓存key
+        :param other_symbol: 另一个条件的缓存key
+        :param cur_time:
+        :param between_time: 延迟时间
+        :param success_action:
+        :return:
+        """
         if other_symbol in self.__effective_time:
             if DateUtil.between_minutes(self.__effective_time.get(other_symbol), cur_time,
                                         self.__mem_holder.trade_date) <= between_time:
@@ -148,6 +174,16 @@ class Day15TradeStrategy(ITradeStrategy):
 
     def __delay_judge_point2(self, self_symbol, other_symbol, cur_time, between_time, need_check_mode_2,
                              success_action):
+        """
+        延迟判断是否买卖点
+        :param self_symbol: 自己的缓存key
+        :param other_symbol: 另一个条件的缓存key
+        :param cur_time:
+        :param between_time: 延迟时间
+        :param need_check_mode_2:
+        :param success_action:
+        :return:
+        """
         if other_symbol in self.__effective_time:
             if DateUtil.between_minutes(self.__effective_time.get(other_symbol), cur_time,
                                         self.__mem_holder.trade_date) <= between_time:
@@ -439,5 +475,12 @@ class Day15TradeStrategy(ITradeStrategy):
         # return False
 
     def __day_60min_sell_func(self, day, time, price):
+        """
+        执行60分钟卖出命令+切换模式的函数
+        :param day:
+        :param time:
+        :param price:
+        :return:
+        """
         self.__trader.sell(self.__stock_id, day, time, price, 'sell6')
         self.__change_mode(mode_day_15min_sell)

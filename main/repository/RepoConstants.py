@@ -3,14 +3,34 @@ baostock变量
 """
 
 # fields：指示简称，支持多指标输入，以半角逗号分隔，填写内容作为返回类型的列。
-fields = "date,code,open,high,low,close,preclose,volume,amount,adjustflag,turn,tradestatus,pctChg,isST"
-fields_min = "date,time,code,open,high,low,close,volume,amount,adjustflag"
+# date	code	open	high	low	close	preclose	volume	amount	adjustflag	turn	tradestatus	pctChg	isST
+# 2017-07-03	sh.600000	12.64	12.65	12.47	12.56	12.65	38778949	486264672	3	0.137985	1	—0.711456	0
+# 2017-07-04	sh.600000	12.55	12.58	12.41	12.55	12.56	36659128	458434432	3	0.130442	1	—0.07962	0
+# 2017-07-05	sh.600000	12.5	12.65	12.47	12.62	12.55	26470507	332542464	3	0.094188	1	0.557767	0
+bao_fields = "date,code,open,high,low,close,preclose,volume,amount,adjustflag,turn,tradestatus,pctChg,isST"
+bao_fields_min = "date,time,code,open,high,low,close,volume,amount,adjustflag"
 
 # frequency：数据类型，默认为d，日k线；d=日k线、w=周、m=月、5=5分钟、15=15分钟、30=30分钟、60=60分钟k线数据，不区分大小写；
 # 指数没有分钟线数据；周线每周最后一个交易日才可以获取，月线每月最后一个交易日才可以获取。
-frequency = ["d", "w", "m"]
-frequency_min = ["5", "15", "30", "60"]
+bao_frequency = ["d", "w", "m"]
+bao_frequency_min = ["5", "15", "30", "60"]
 
 # adjustflag：复权类型，默认不复权：3；1：后复权；2：前复权。已支持分钟线、日线、周线、月线前后复权。 BaoStock提供的是涨跌幅复权算法复权因子
-adjustflag = ["1", "2", '3']
+bao_adjustflag = ["1", "2", '3']
 
+"""
+akshare变量
+"""
+#           date     open     high      low    close    volume
+# 0   2021-04-23  130.000  130.000  130.000  130.000  18364266
+# 1   2021-04-26  130.353  133.880  125.110  130.010  86109443
+# 2   2021-04-27  129.000  130.846  128.400  129.600  18207663
+# 3   2021-04-28  129.100  131.663  128.903  130.770  14677269
+ak_bond_fields = "date,open,high,low,close,volume"
+#               时间       开盘       收盘  ...         成交额    振幅   换手率
+# 0     2021-09-10 09:35:00  128.048  130.164  ...  12380872.0  1.78  1.83
+# 1     2021-09-10 09:40:00  130.306  129.720  ...  11514303.0  1.12  1.70
+# 2     2021-09-10 09:45:00  129.800  129.781  ...  12926171.0  0.87  1.90
+# 3     2021-09-10 09:50:00  129.815  129.700  ...   9881294.0  0.53  1.45
+# 4     2021-09-10 09:55:00  129.682  129.868  ...   7237449.0  0.51  1.07
+ak_bond_fields_min = "时间,开盘,收盘,最高,最低,涨跌幅,涨跌额,成交量,成交额,振幅,换手率"

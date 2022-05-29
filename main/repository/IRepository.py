@@ -6,8 +6,17 @@ import datetime
 from abc import ABCMeta, abstractmethod
 from main.utils import DateUtil
 
+stock_day_fields = ['date', 'code', 'open', 'high', 'low', 'close', 'preclose', 'volume', 'amount']
+stock_min_fields = ['date', 'time', 'code', 'open', 'high', 'low', 'close', 'preclose', 'volume', 'amount']
+
+bond_day_fields = ['date', 'code', 'open', 'high', 'low', 'close', 'volume']
+bond_min_fields = ['date', 'time', 'code', 'open', 'high', 'low', 'close', 'volume']
+
 
 class IStockRepository(metaclass=ABCMeta):
+    """
+    股票接口
+    """
 
     @abstractmethod
     def get_stock_data_by_date(self, stock_id, start_date, end_date, frequency='d'):
@@ -29,7 +38,7 @@ class IStockRepository(metaclass=ABCMeta):
         :param frequency:
         :return:
         """
-        now = datetime.datetime.now()
+        now = datetime.datetime.today()
         year_ago = now + datetime.timedelta(days=n * -365)
         return self.get_stock_data_by_date(stock_id, DateUtil.format_yymmdd(year_ago), DateUtil.format_yymmdd(now),
                                            frequency)
@@ -51,7 +60,37 @@ class IStockRepository(metaclass=ABCMeta):
         :param frequency:
         :return:
         """
-        now = datetime.datetime.now()
+        now = datetime.datetime.today()
         year_ago = now + datetime.timedelta(days=n * -30)
         return self.get_stock_data_by_date(stock_id, DateUtil.format_yymmdd(year_ago), DateUtil.format_yymmdd(now),
                                            frequency)
+
+
+class IBondRepository(metaclass=ABCMeta):
+    """
+    转债接口
+    """
+
+    @abstractmethod
+    def get_bond_data_daily(self, stock_id, start_date, end_date, frequency='d'):
+        """
+        按照时间获取K线数据，日线
+        :param stock_id:
+        :param start_date:
+        :param end_date:
+        :param frequency:
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def get_bond_data_min(self, stock_id, start_date, end_date, frequency='5'):
+        """
+        按照时间获取K线数据，分钟级别
+        :param stock_id:
+        :param start_date:
+        :param end_date:
+        :param frequency:
+        :return:
+        """
+        pass

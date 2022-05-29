@@ -21,6 +21,10 @@ class Trader(ITrader):
         if record_list is None:
             record_list = pd.DataFrame(columns=['date', 'time', 'price', 'operation', 'zero_axis_60'])
             self.record_map[stock_id] = record_list
+        last_one = CollectionUtil.df_getlast(record_list, None)
+        if 'buy1' == operation and last_one is not None and 'buy2' == last_one:
+            print(f'{operation} is repeat, time {time}')
+            return
         CollectionUtil.df_add(record_list, [day, time, price, operation, kwargs.get('zero_axis_60')])
 
     def sell(self, stock_id, day, time, price, operation, **kwargs):

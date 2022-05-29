@@ -9,7 +9,7 @@ import datetime
 import pandas as pd
 
 from main.repository import RepoConstants
-from main.repository.AkShareRepository import AkShareRepository
+from main.repository.AkShareRepository import AkShareStockRepository
 from main.repository.BaoStockRepository import BaoStockRepository
 from main.service import TaLibService
 from main.utils import CollectionUtil, DateUtil
@@ -17,7 +17,7 @@ from main.utils import FileUtil
 
 repository_factory = {
     'bao': BaoStockRepository(),
-    'ak': AkShareRepository()
+    'ak': AkShareStockRepository()
 }
 column_map = {
     'bao': {'close': 'close', 'date': 'date'},
@@ -42,14 +42,14 @@ def __get_data(result, frequency, source):
     CollectionUtil.round_n(macd, 4)
 
     date_name = 'date'
-    if frequency in RepoConstants.frequency_min:
+    if frequency in RepoConstants.bao_frequency_min:
         date_name = 'time'
     # 前33个为Nan，所以推荐用于计算的数据量一般为你所求日期之间数据量的3倍
     df_macd = pd.DataFrame({"dif": macdDIF[33:], "dea": macdDEA[33:], "macd": macd[33:]}, index=result[date_name][33:],
                            columns=['dif', 'dea', 'macd'])
     # 与原数据合并
     df_macd_data = pd.merge(df_macd, result, on=date_name, how='left')
-    if frequency in RepoConstants.frequency_min:
+    if frequency in RepoConstants.bao_frequency_min:
         df_macd_data['time'] = df_macd_data['time'].astype(float)
     return df_macd, df_macd_data
 
@@ -78,7 +78,9 @@ def get_n_year_macd(stock_id, year, read_csv=True, frequency='d', source='bao'):
     result = None
     for i in range(year * 2, 0, -1):
         start = today + datetime.timedelta(days=-30 * 6 * i)
-        end = start + datetime.timedelta(days=30 * 6)
+        end = start + datetime.timedelta(days=30 * 6 - 1)
+        if i == 1:
+            end = start + datetime.timedelta(days=30 * 6)
         data = repository.get_stock_data_by_date(stock_id, DateUtil.format_yymmdd(start),
                                                  DateUtil.format_yymmdd(end), frequency)
         if result is None:
