@@ -21,22 +21,25 @@ k_type_time_map = {
 }
 
 
-def day_15min(stock_id, read_csv=True):
+def day_15min(stock_id, is_stock=True):
     """
     日-15金叉套
     :param stock_id:
-    :param read_csv:
+    :param is_stock:
     :return:
     """
     trader = Trader()
     strategy = Day15TradeStrategy()
     strategy.load_trader(trader)
-    holder = DataMemHolder.get_data_from_mem(stock_id)
+    if is_stock:
+        holder = DataMemHolder.get_stock_from_mem(stock_id)
+    else:
+        holder = DataMemHolder.get_bond_from_mem(stock_id)
     print('ready to action')
     for i in range(20, holder.day_macd_data.shape[0]):
         cur = holder.day_macd_data.iloc[i]
         day = cur['date']
-        strategy.load_data(stock_id, day)
+        strategy.load_data(stock_id, day, is_stock)
         day_5min = holder.min5_macd_data[holder.min5_macd_data['date'] == day]
         for j in range(day_5min.shape[0]):
             cur_ = day_5min.iloc[j]

@@ -12,7 +12,7 @@ from main.trader.ITrader import ITrader
 class ITradeStrategy(metaclass=ABCMeta):
 
     @abstractmethod
-    def load_data(self, stock_id, day):
+    def load_data(self, stock_id, day, is_stock):
         pass;
 
     @abstractmethod

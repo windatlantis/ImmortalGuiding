@@ -34,3 +34,7 @@ ak_bond_fields = "date,open,high,low,close,volume"
 # 3     2021-09-10 09:50:00  129.815  129.700  ...   9881294.0  0.53  1.45
 # 4     2021-09-10 09:55:00  129.682  129.868  ...   7237449.0  0.51  1.07
 ak_bond_fields_min = "时间,开盘,收盘,最高,最低,涨跌幅,涨跌额,成交量,成交额,振幅,换手率"
+ak_frequency = ["daily", "weekly", "monthly"]
+ak_frequency_min = ["5", "15", "30", "60"]
+# '': 不复权, 'qfq': 前复权, 'hfq': 后复权, 其中 1 分钟数据返回近 5 个交易日数据且不复权
+ak_adjustflag = ['', 'qfq', 'hfq']

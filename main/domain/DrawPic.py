@@ -16,7 +16,7 @@ def draw_macd_pic(stock_id, read_csv=True):
     :param read_csv:
     :return:
     """
-    df_macd, df_macd_data = DataCreator.get_one_year_macd(stock_id, read_csv)
+    df_macd, df_macd_data = DataCreator.get_stock_n_year_macd(stock_id, 1, read_csv)
     MatplotService.init_plt_style()
     # 绘制图片
     MatplotService.show(df_macd, title=stock_id + '近1年macd', xlabel='时间', legends=['dif', 'dea', 'macd'])

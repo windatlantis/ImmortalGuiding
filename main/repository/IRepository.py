@@ -5,6 +5,7 @@ K线资源接口
 import datetime
 from abc import ABCMeta, abstractmethod
 from main.utils import DateUtil
+from main.repository import RepoConstants
 
 stock_day_fields = ['date', 'code', 'open', 'high', 'low', 'close', 'preclose', 'volume', 'amount']
 stock_min_fields = ['date', 'time', 'code', 'open', 'high', 'low', 'close', 'preclose', 'volume', 'amount']
@@ -61,8 +62,8 @@ class IStockRepository(metaclass=ABCMeta):
         :return:
         """
         now = datetime.datetime.today()
-        year_ago = now + datetime.timedelta(days=n * -30)
-        return self.get_stock_data_by_date(stock_id, DateUtil.format_yymmdd(year_ago), DateUtil.format_yymmdd(now),
+        month_ago = now + datetime.timedelta(days=n * -30)
+        return self.get_stock_data_by_date(stock_id, DateUtil.format_yymmdd(month_ago), DateUtil.format_yymmdd(now),
                                            frequency)
 
 
@@ -94,3 +95,15 @@ class IBondRepository(metaclass=ABCMeta):
         :return:
         """
         pass
+
+    def get_bond_data_by_date(self, stock_id, start_date, end_date, frequency='d'):
+        if frequency in RepoConstants.bao_frequency:
+            return self.get_bond_data_daily(stock_id, start_date, end_date, frequency)
+        else:
+            return self.get_bond_data_min(stock_id, start_date, end_date, frequency)
+
+    def get_bond_data_n_month_ago(self, stock_id, n, frequency='d'):
+        now = datetime.datetime.today()
+        month_ago = now + datetime.timedelta(days=n * -30)
+        return self.get_bond_data_by_date(stock_id, DateUtil.format_yymmdd(month_ago), DateUtil.format_yymmdd(now),
+                                          frequency)

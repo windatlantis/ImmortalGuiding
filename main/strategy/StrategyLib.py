@@ -9,6 +9,6 @@ from main.strategy import Day15mStrategy
 from main.domain import Analysiser
 
 
-def call_day_15min(stock_id, read_csv=True):
-    Day15mStrategy.day_15min(stock_id, read_csv)
+def call_day_15min(stock_id, is_stock=True):
+    Day15mStrategy.day_15min(stock_id, is_stock)
     Analysiser.analysis_record(stock_id)

@@ -63,9 +63,12 @@ class Day15TradeStrategy(ITradeStrategy):
         # 有效时间
         self.__effective_time = {}
 
-    def load_data(self, stock_id, day):
+    def load_data(self, stock_id, day, is_stock):
         self.__stock_id = stock_id
-        self.__mem_holder = DataMemHolder.get_data_from_mem(stock_id)
+        if is_stock:
+            self.__mem_holder = DataMemHolder.get_stock_from_mem(stock_id)
+        else:
+            self.__mem_holder = DataMemHolder.get_bond_from_mem(stock_id)
         day_macd_data = self.__mem_holder.day_macd_data
         min5_macd_data = self.__mem_holder.min5_macd_data
         min15_macd_data = self.__mem_holder.min15_macd_data
