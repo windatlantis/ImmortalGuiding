@@ -2,6 +2,8 @@ import math
 import os
 import unittest
 
+import requests
+import json
 from numpy.random import randint
 from pandas import Series, DataFrame
 import baostock as bs
@@ -10,8 +12,22 @@ import matplotlib.pyplot as plt
 import talib as ta
 import numpy as np
 from main.utils.DateUtil import *
+from main.repository import THSRepository
 
 class MyTestCase(unittest.TestCase):
+
+    def test_ths(self):
+        stock_id = '123134.SZ'
+        start_date = '2022-02-01'
+        end_date = '2022-06-01'
+        frequency = '5'
+        request_url = 'https://quantapi.51ifind.com/api/v1/high_frequency'
+        request_headers = {"Content-Type": "application/json", "access_token": THSRepository.get_access_token()}
+        form_json = {"codes": stock_id, "indicators": "close", "starttime": start_date + " 09:15:00",
+                     "endtime": end_date + " 15:15:00", "functionpara": {"Interval": frequency}}
+        response = requests.post(url=request_url, json=form_json, headers=request_headers)
+        content = json.loads(response.content)
+        print(content)
 
     def test_arr(self):
         date_arr = ['date', 'aaa']

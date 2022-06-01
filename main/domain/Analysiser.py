@@ -18,8 +18,9 @@ def save_record(record_list, stock_id):
     :param stock_id:
     :return:
     """
-    FileUtil.write_csv(record_list, record_file_name.format(stock_id))
-    print('save_record')
+    if record_list is not None:
+        FileUtil.write_csv(record_list, record_file_name.format(stock_id))
+        print('save_record')
 
 
 def analysis_record(stock_id):
@@ -29,6 +30,9 @@ def analysis_record(stock_id):
     :return:
     """
     record_list = FileUtil.read_csv(record_file_name.format(stock_id))
+    if record_list is None:
+        print('file is none')
+        return
     count = 0
     stock = 0
     earns = []

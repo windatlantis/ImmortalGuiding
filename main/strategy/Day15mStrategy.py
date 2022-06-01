@@ -58,6 +58,9 @@ def handle_record(record_list):
     :param record_list:
     :return:
     """
+    if record_list is None:
+        print('record_list is None')
+        return None
     record_list = record_list.sort_values('time')
     tips = []
     stocks = []

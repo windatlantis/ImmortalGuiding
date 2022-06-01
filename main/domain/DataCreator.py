@@ -11,6 +11,7 @@ import pandas as pd
 from main.repository import RepoConstants
 from main.repository.AkShareRepository import AkShareStockRepository, AkShareBondRepository
 from main.repository.BaoStockRepository import BaoStockRepository
+from main.repository.THSRepository import THSBondRepository
 from main.service import TaLibService
 from main.utils import CollectionUtil, DateUtil
 from main.utils import FileUtil
@@ -21,7 +22,8 @@ stock_repository_factory = {
 }
 
 bond_repository_factory = {
-    'ak': AkShareBondRepository()
+    'ak': AkShareBondRepository(),
+    'ths': THSBondRepository()
 }
 
 stock_year_file_close = '{}_{}_{}y_close'
@@ -132,7 +134,7 @@ def get_stock_n_month_macd(stock_id, month, read_csv=True, frequency='d', source
     return df_macd, df_macd_data
 
 
-def get_bond_n_month_macd(stock_id, month, read_csv=True, frequency='d', source='ak'):
+def get_bond_n_month_macd(stock_id, month, read_csv=True, frequency='d', source='ths'):
     """
     获取macd
     :param stock_id:
