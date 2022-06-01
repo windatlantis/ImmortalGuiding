@@ -10,5 +10,9 @@ from main.domain import Analysiser
 
 
 def call_day_15min(stock_id, is_stock=True):
-    Day15mStrategy.day_15min(stock_id, is_stock)
+    if isinstance(stock_id, list):
+        for sid in stock_id:
+            Day15mStrategy.day_15min(sid, is_stock)
+    else:
+        Day15mStrategy.day_15min(stock_id, is_stock)
     Analysiser.analysis_record(stock_id)

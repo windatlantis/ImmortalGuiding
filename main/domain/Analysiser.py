@@ -5,7 +5,9 @@
 @File : Analysiser.py
 """
 
-from main.utils import FileUtil
+import pandas as pd
+from main.utils import FileUtil, CollectionUtil
+from datetime import datetime
 
 record_file_name = 'record_list_{}'
 analysis_file_name = 'record_list_{}_analysis'
@@ -23,35 +25,30 @@ def save_record(record_list, stock_id):
         print('save_record')
 
 
-def analysis_record(stock_id):
+def analysis_record(stock_ids):
     """
     获利分析
-    :param stock_id:
+    :param stock_ids:
     :return:
     """
-    record_list = FileUtil.read_csv(record_file_name.format(stock_id))
-    if record_list is None:
-        print('file is none')
-        return
-    count = 0
-    stock = 0
-    earns = []
-    percents = []
-    for i in range(record_list.shape[0]):
-        cur = record_list.iloc[i]
-        earn = 0
-        percent = ''
-        if cur['stocks'] > 0:
-            count = count + float(cur['price']) * 100
-            stock = cur['stocks']
-        if cur['stocks'] == 0 and not stock == 0:
-            earn = float(cur['price']) * stock * 100 - count
-            percent = '{0}%'.format(round(earn / count * 100, 2))
-            count = 0
-            stock = 0
-        earns.append(earn)
-        percents.append(percent)
-    record_list.insert(record_list.shape[1], 'earns', earns)
-    record_list.insert(record_list.shape[1], 'percents', percents)
-    FileUtil.write_csv(record_list, analysis_file_name.format(stock_id))
+    if isinstance(stock_ids, str):
+        stock_ids = [stock_ids]
+    total = pd.DataFrame(
+        columns=['code', 'buy_date', 'buy_time', 'sell_date', 'sell_time', 'buy_price', 'sell_price',
+                 'buy_type', 'sell_type', '100*earn', 'percent'])
+    for stock_id in stock_ids:
+        record_list = FileUtil.read_csv(record_file_name.format(stock_id))
+        if record_list is None:
+            print(stock_id + ' file is none')
+            continue
+        for i in range(1, record_list.shape[0]):
+            cur = record_list.iloc[i]
+            last = record_list.iloc[i - 1]
+            if cur['stocks'] == 0 and last['stocks'] > 0:
+                CollectionUtil.df_add(total, [stock_id, last['date'], last['time'], cur['date'], cur['time'],
+                                              last['price'], cur['price'], last['operation'], cur['operation'],
+                                              (cur['price'] - last['price']) * 100,
+                                              '{0}%'.format(
+                                                  round((cur['price'] - last['price']) / last['price'] * 100, 2))])
+    FileUtil.write_csv(total, analysis_file_name.format(datetime.today().date()))
     print('analysis_record')

@@ -35,7 +35,7 @@ def day_15min(stock_id, is_stock=True):
         holder = DataMemHolder.get_stock_from_mem(stock_id)
     else:
         holder = DataMemHolder.get_bond_from_mem(stock_id)
-    print('ready to action')
+    print('ready to action ' + stock_id)
     for i in range(20, holder.day_macd_data.shape[0]):
         cur = holder.day_macd_data.iloc[i]
         day = cur['date']
@@ -45,7 +45,7 @@ def day_15min(stock_id, is_stock=True):
             cur_ = day_5min.iloc[j]
             min5 = cur_['time']
             strategy.match(day, min5, cur_['close'])
-    print('start handle record')
+    print('start handle record ' + stock_id)
     record_list = trader.record_map.get(stock_id)
     record_list = handle_record(record_list)
     print(record_list)

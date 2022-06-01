@@ -65,7 +65,6 @@ class THSBondRepository(IBondRepository):
                      "enddate": end_date, "functionpara": {"PriceType": "1"}}
         response = requests.post(url=request_url, json=form_json, headers=request_headers)
         content = json.loads(response.content)
-        print(content)
         code = content['errorcode']
         if code == 0:
             bond_table = pd.DataFrame(columns=['date', 'close'])
@@ -77,7 +76,7 @@ class THSBondRepository(IBondRepository):
             self.__refresh_token()
             return self.get_bond_data_daily(stock_id, start_date, end_date, frequency)
         else:
-            print('error:' + code + ', msg:' + content['errmsg'])
+            print(stock_id + ' error:' + code + ', msg:' + content['errmsg'])
             return None
 
     def get_bond_data_min(self, stock_id, start_date, end_date, frequency='5'):
@@ -87,7 +86,6 @@ class THSBondRepository(IBondRepository):
                      "endtime": end_date + " 15:15:00", "functionpara": {"Interval": frequency}}
         response = requests.post(url=request_url, json=form_json, headers=request_headers)
         content = json.loads(response.content)
-        print(content)
         code = content['errorcode']
         if code == 0:
             bond_table = pd.DataFrame(columns=['date', 'close'])
@@ -99,5 +97,5 @@ class THSBondRepository(IBondRepository):
             self.__refresh_token()
             return self.get_bond_data_min(stock_id, start_date, end_date, frequency)
         else:
-            print('error:' + code + ', msg:' + content['errmsg'])
+            print(stock_id + ' error:' + code + ', msg:' + content['errmsg'])
             return None
