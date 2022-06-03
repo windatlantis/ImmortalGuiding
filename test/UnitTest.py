@@ -31,12 +31,16 @@ class MyTestCase(unittest.TestCase):
 
     def test_arr(self):
         date_arr = ['date', 'aaa']
-        columns = date_arr + ['zero_axis', 'cross_type', 'true_cross']
-        print(columns)
-        l = np.array(columns)
-        print(l[0])
-        for i in range(2 * 2 - 1, 0, -1):
-            print(i)
+        columns = date_arr * 2 + ['zero_axis', 'cross_type', 'true_cross']
+        column = ['code', 'buy_date', 'buy_time']
+        part = ['sell_plan', 'sell_date']
+        for i in range(2):
+            column = column + [p + str(i) for p in part]
+        print(column)
+        # l = np.array(columns)
+        # print(l[0])
+        # for i in range(2 * 2 - 1, 0, -1):
+        #     print(i)
 
     def test_date(self):
         day_str='2022-05-01'

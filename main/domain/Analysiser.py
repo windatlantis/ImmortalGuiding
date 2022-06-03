@@ -4,6 +4,7 @@
 @Author: windatlantis
 @File : Analysiser.py
 """
+from functools import reduce
 
 import pandas as pd
 from main.utils import FileUtil, CollectionUtil, DateUtil
@@ -11,6 +12,7 @@ from datetime import datetime
 
 record_file_name = 'record_list_{}'
 analysis_file_name = 'record_list_{}_analysis'
+compare_file_name = 'record_list_{}_compare'
 
 temp_dir = ''
 
@@ -88,4 +90,33 @@ def analysis_record_only(path, stock_ids):
                                               '{0}%'.format(
                                                   round((cur['price'] - last['price']) / last['price'] * 100, 2))])
     FileUtil.write_csv_temp_dir(total, path, analysis_file_name.format(datetime.today().date()))
+    print('analysis_record')
+
+
+def analysis_record_compare():
+    """
+    获利分析比较
+    :return:
+    """
+    files = ['方案0', '方案1', '方案2', '方案3']
+    columns = []
+    column = ['id', 'code', 'buy_date', 'buy_time']
+    part = ['sell_plan', 'sell_date', 'sell_time', 'buy_price', 'sell_price', 'buy_type', 'sell_type', '100*earn',
+            'percent']
+    for k in range(len(files)):
+        columns.append(column + [p + str(k) for p in part])
+
+    record_list = []
+    for i in range(len(files)):
+        file = files[i]
+        record = FileUtil.read_csv_temp_dir('analysis', file)
+        record.insert(4, 'sell_plan', ['plan' + str(i) for j in range(record.shape[0])])
+        record.columns = columns[i]
+        record = record.drop('id', axis=1)
+        record_list.append(record)
+
+    df_result = reduce(lambda left, right: pd.merge(left, right, how='outer', on=['code', 'buy_date', 'buy_time']),
+                       record_list)
+
+    FileUtil.write_csv_temp_dir(df_result, 'analysis', compare_file_name.format(datetime.today().date()))
     print('analysis_record')

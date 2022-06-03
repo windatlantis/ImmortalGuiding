@@ -135,9 +135,9 @@ class Day15TradeStrategy(ITradeStrategy):
             self.__day_15min_buy2(day, time, price)
             self.__day_15min_buy1(day, time, price)
         if self.__mode == mode_day_15min_sell:
-            self.__day_15min_sell_1(day, time, price)
+            self.__day_15min_sell_3(day, time, price)
         elif self.__mode == mode_day_60min_sell:
-            self.__day_60min_sell_1(day, time, price)
+            self.__day_60min_sell_3(day, time, price)
 
     def __change_mode(self, mode):
         """
@@ -394,6 +394,65 @@ class Day15TradeStrategy(ITradeStrategy):
                 else:
                     self.__trader.sell(self.__stock_id, day, time, price, 'sell5')
 
+    def __day_15min_sell_3(self, day, time, price):
+        """
+        信号一：【15分钟级别，在0轴以下】，【5分钟死叉】。——每5min判断一次
+        信号二：【15分钟级别，在0轴以上】，【5分钟顶背离, 15分钟即将死叉】二者出现任一信号，则直接卖出，最后，【15分钟出现死叉】一定卖出。
+        :param day:
+        :param time:
+        :return:
+        """
+        # 先买入才能卖出
+        last_record = self.__trader.last_record(self.__stock_id)
+        if last_record is None or 'sell' in last_record['operation']:
+            return True
+        # 加载条件*所需数据
+        need_check_mode_2 = last_record['zero_axis_60'] < 0
+        # 正常卖出条件
+        dead_cross_5 = LineCrossService.filter_dead_cross(self.__line_cross_5)['time'].unique()
+        dead_cross_soon_15 = LineCrossService.filter_dead_cross_soon(self.__line_cross_soon_15)['time'].unique()
+        top_deviation_5 = DeviationService.filter_macd_top_deviation(self.__macd_deviation_5)['time'].unique()
+        dead_cross_15 = LineCrossService.filter_dead_cross(self.__line_cross_15)['time'].unique()
+
+        last_15_minutes = DateUtil.last_15_minutes_time_float(time)
+        if self.__macd_15_day[self.__macd_15_day['time'] == last_15_minutes].iloc[0]['dif'] <= 0:
+            # 【15分钟级别，在0轴以下】，【5分钟死叉】
+            if time in dead_cross_5:
+                self.__trader.sell(self.__stock_id, day, time, price, 'sell3')
+        else:
+            origin_mode = self.__mode
+            # 【15分钟级别，在0轴以上】
+            # 【15分钟即将死叉】
+            if time in dead_cross_soon_15:
+                if need_check_mode_2 and self.__macd_60_day[
+                    (DateUtil.calculate_time_float(time, 60) > self.__macd_60_day['time']) & (
+                            time <= self.__macd_60_day['time'])]['dif'].iloc[0] > 0:
+                    print(f'{time} should sell10, but macd_60_day')
+                    self.__change_mode(mode_day_60min_sell)
+                    return
+                else:
+                    self.__trader.sell(self.__stock_id, day, time, price, 'sell10')
+            # 【5分钟顶背离】
+            if time in top_deviation_5:
+                if need_check_mode_2 and self.__macd_60_day[
+                    (DateUtil.calculate_time_float(time, 60) > self.__macd_60_day['time']) & (
+                            time <= self.__macd_60_day['time'])]['dif'].iloc[0] > 0:
+                    print(f'{time} should sell8, but macd_60_day')
+                    self.__change_mode(mode_day_60min_sell)
+                    return
+                else:
+                    self.__trader.sell(self.__stock_id, day, time, price, 'sell8')
+            # 【15分钟出现死叉】一定卖出
+            if time in dead_cross_15:
+                if need_check_mode_2 and self.__macd_60_day[
+                    (DateUtil.calculate_time_float(time, 60) > self.__macd_60_day['time']) & (
+                            time <= self.__macd_60_day['time'])]['dif'].iloc[0] > 0:
+                    print(f'{time} should sell5, but macd_60_day')
+                    self.__change_mode(mode_day_60min_sell)
+                    return
+                else:
+                    self.__trader.sell(self.__stock_id, day, time, price, 'sell5')
+
     def __day_60min_sell(self, day, time, price):
         """
         信号二的升级60分钟卖点方案：如果15分钟把60分钟带上0轴，则改看60分钟信号。即：15分钟买出信号出现时，60分钟MACD在0轴以下，15分钟卖出信号时，60分钟MACD在0轴以上了
@@ -465,6 +524,35 @@ class Day15TradeStrategy(ITradeStrategy):
         # 【60分钟即将死叉】
         if time in dead_cross_soon_60:
             self.__trader.sell(self.__stock_id, day, time, price, 'sell11')
+            self.__change_mode(mode_day_15min_sell)
+            return
+        # 【60分钟死叉】一定卖出
+        if time in dead_cross_60:
+            self.__trader.sell(self.__stock_id, day, time, price, 'sell7')
+            self.__change_mode(mode_day_15min_sell)
+            return
+
+    def __day_60min_sell_3(self, day, time, price):
+        """
+        信号二的升级60分钟卖点方案：如果15分钟把60分钟带上0轴，则改看60分钟信号。即：15分钟买出信号出现时，60分钟MACD在0轴以下，15分钟卖出信号时，60分钟MACD在0轴以上了
+        变更卖出条件为：【60分钟即将死叉，15分钟顶背离】二者出现任一信号，则直接卖出。最后，则【60分钟死叉】一定卖出。
+        :param day:
+        :param time:
+        :return:
+        """
+        # 正常卖出条件
+        dead_cross_soon_60 = LineCrossService.filter_dead_cross_soon(self.__line_cross_soon_60)['time'].unique()
+        top_deviation_15 = DeviationService.filter_macd_top_deviation(self.__macd_deviation_15)['time'].unique()
+        dead_cross_60 = LineCrossService.filter_dead_cross(self.__line_cross_60)['time'].unique()
+        origin_mode = self.__mode
+        # 【60分钟即将死叉】
+        if time in dead_cross_soon_60:
+            self.__trader.sell(self.__stock_id, day, time, price, 'sell11')
+            self.__change_mode(mode_day_15min_sell)
+            return
+        # 【15分钟顶背离】
+        if time in top_deviation_15:
+            self.__trader.sell(self.__stock_id, day, time, price, 'sell9')
             self.__change_mode(mode_day_15min_sell)
             return
         # 【60分钟死叉】一定卖出
