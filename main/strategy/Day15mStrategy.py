@@ -36,7 +36,7 @@ def day_15min(stock_id, is_stock=True):
     else:
         holder = DataMemHolder.get_bond_from_mem(stock_id)
     print('ready to action ' + stock_id)
-    for i in range(20, holder.day_macd_data.shape[0]):
+    for i in range(1, holder.day_macd_data.shape[0]):
         cur = holder.day_macd_data.iloc[i]
         day = cur['date']
         strategy.load_data(stock_id, day, is_stock)

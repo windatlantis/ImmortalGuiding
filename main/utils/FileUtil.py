@@ -16,6 +16,35 @@ csv_path = 'd:/db_temp/'
 csv_name = '{}.csv'
 
 
+def write_csv_temp_dir(data: DataFrame, temp_dir, name='', index=True):
+    """
+    写csv文件
+    :param data:
+    :param temp_dir:
+    :param name:
+    :param index:
+    :return:
+    """
+    if name == '':
+        name = DateUtil.format_yymmdd_hhmmss_long(datetime.datetime.now())
+    if not os.path.exists(csv_path + temp_dir + '/'):
+        os.mkdir(csv_path + temp_dir + '/')
+    data.to_csv(csv_path + temp_dir + '/' + csv_name.format(name), index=index)
+
+
+def read_csv_temp_dir(temp_dir, name):
+    """
+    读csv文件
+    :param temp_dir:
+    :param name:
+    :return:
+    """
+    path = csv_path + temp_dir + '/' + csv_name.format(name)
+    data = None
+    if os.path.exists(path):
+        data = pd.read_csv(path)
+    return data
+
 def write_csv(data: DataFrame, name='', index=True):
     """
     写csv文件
